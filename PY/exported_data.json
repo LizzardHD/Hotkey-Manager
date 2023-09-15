@@ -1,0 +1,1 @@
+{"sample": [["Hotkey", "space"], ["Keyboard Write", "-420,700"], ["Sleep", "0.4"], ["Keyboard Write", "hello world! :D "], ["Sleep", "0.1"], ["Keyboard Write", "zer "], ["Sleep", "3"]], "sample2": [["Hotkey", "space"], ["Keyboard Write", "-420,700"], ["Sleep", "0.4"], ["Keyboard Write", "hello world! :D "], ["Sleep", "0.1"], ["Keyboard Write", "zer "], ["Sleep", "3"]]}
