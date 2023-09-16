@@ -5,7 +5,6 @@ from tkinter import scrolledtext
 import json
 import threading
 import atexit
-from typing import Callable
 import keyboard
 import mouse
 import time
@@ -183,6 +182,7 @@ def call_hotkey_name_menu(exported_data=exported_data):
 
     if Optionmenu_Hotkey_Choice_Instance is None:
         Optionmenu_Hotkey_Choice_Instance = Optionmenu_Hotkey_Choice(execution_frame, exported_data)
+        
 # Function to display a message in the terminal
 def display_message(message):
     global display_message_run_times
