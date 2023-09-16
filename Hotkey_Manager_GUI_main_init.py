@@ -5,7 +5,6 @@ from tkinter import scrolledtext
 import json
 import threading
 import atexit
-from Hotkey_Stable_v2 import Hotkey
 from typing import Callable
 import keyboard
 import mouse
