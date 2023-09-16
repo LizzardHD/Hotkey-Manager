@@ -1,1 +1,1 @@
-{"test_sample": [], "test": [["Hotkey", "space"], ["Sleep", ".4"], ["Keyboard Write", "test"]]}
+{"test": [["Hotkey", "space"], ["Sleep", ".4"], ["Keyboard Write", "test"]], "test sample": [["Hotkey", ""]]}

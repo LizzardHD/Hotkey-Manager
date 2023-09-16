@@ -26,124 +26,123 @@ display_message_run_times = 0
 
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Hotkey Function:
+Hotkey Class:
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 '''
-# Variables for starting and stopping the Hotkey
-programm_running = False
-loop_running = False
-falling_trigger = False
-
-# Create a global variable to store the reference to the loop thread
-loop_thread_instance = None
-
-def loop_thread(actionlist: list[list]):
-    global loop_running
-    for action in actionlist:
-        if action[0] == "Hotkey":
-            hotkey = action[1]
-            break
-    keyboard.on_press_key(hotkey, on_hotkey_event)
-    keyboard.on_release_key(hotkey, on_hotkey_event)
-    display_message(f"Press {hotkey} to start/stop the loop.")
-    while programm_running:
-        if loop_running:
-            print("loop")
-            for key, value in actionlist:
-                if not loop_running:
-                    break
-                elif key == "Sleep":
-                    try:
-                        value = float(value)
-                        time.sleep(value)
-                    except Exception as e:
-                        print(f"{e} Fault at key {key} with value: {value}")
-                        continue
-                elif key == "Mouse Click":
-                    mouse.click(value)  # 'value' should be 'left', 'right', or 'middle'
-                elif key == "Mouse Double Click":
-                    mouse.double_click(value)  # 'value' should be 'left', 'right', or 'middle'
-                elif key == "Mouse Press":
-                    mouse.press(value)  # 'value' should be 'left', 'right', or 'middle'
-                elif key == "Mouse Release":
-                    mouse.release(value)  # 'value' should be 'left', 'right', or 'middle'
-                elif key == "Mouse Move":
-                    x, y = map(int, value.split(','))
-                    mouse.move(x, y,False)
-                elif key == "Absolute Mouse Move":
-                    x, y = map(int, value.split(','))
-                    mouse.move(x, y,True)
-                elif key == "Mouse Wheel":
-                    delta = int(value)
-                    mouse.wheel(delta)
-                elif key == "Keyboard Send":
-                    keyboard.send(value)
-                elif key == "Keyboard Write":
-                    keyboard.write(value)
-                elif key == "Keyboard Press":
-                    keyboard.press(value)
-                elif key == "Keyboard Release":
-                    keyboard.release(value)
-
-def on_hotkey_event(e):
-    global loop_running, falling_trigger
-    if e.event_type == keyboard.KEY_DOWN:
-        if not falling_trigger:
-            falling_trigger = True
-            loop_running = not loop_running
-            if loop_running:
-                display_message("Run")
-            else:
-                display_message("Pause")
-    elif e.event_type == keyboard.KEY_UP:
-        falling_trigger = False
-
-def start_programm():
-    global programm_running, loop_thread_instance
-    if loop_thread_instance and loop_thread_instance.is_alive():
-        # loop thread is already running
-        return
-    # Get the selected name (key) from the OptionMenu
-    selected_name = Optionmenu_Hotkey_Choice_Instance.get_selected_name()
-    if not selected_name:
-        display_message("Please select a name from the list.")
-        return
-    # Get Data
-    selected_data = exported_data.get(selected_name, [])
-    if selected_data == []:
-        display_message(f"No data found for name: {selected_name}")
-        return
-    # Start Programm
-    display_message(f"{selected_name} loaded and ready")
-    programm_running = True
-    loop_thread_instance = threading.Thread(target=loop_thread, args=(selected_data, display_message))
-    loop_thread_instance.daemon = True  # Set as daemon thread
-    loop_thread_instance.start()
-    # Update GUI
-    stop_button.grid(row=0, column=0, padx=5)
-    start_button.grid_forget()
-    terminal_frame.update_idletasks
-
-def stop_programm():
-    global programm_running, loop_running
-    if not loop_thread_instance:
-        # loop thread is not running
-        return
-    # Get the selected name (key) from the OptionMenu
-    selected_name = Optionmenu_Hotkey_Choice_Instance.get_selected_name()
-    if not selected_name:
-        display_message("Please select a name from the list.")
-        return
-    # Stop Programm
-    display_message(f"{selected_name} quitting")
-    programm_running = False
-    loop_running = False  # Stop the loop thread gracefully
-    # Update GUI
-    start_button.grid(row=0, column=0, padx=5)
-    stop_button.grid_forget()
-    terminal_frame.update_idletasks
+class Hotkey:
+    def __init__(self):
+        # Variables for starting and stopping the Hotkey
+        self.programm_running = False
+        self.loop_running = False
+        self.falling_trigger = False
+        # Create a global variable to store the reference to the loop thread
+        self.loop_thread_instance = None
+        # Values to act upon
+        self.selected_name = None
+        self.selected_data = []
+    def get_data(self):
+        # Get the selected name (key) from the OptionMenu
+        self.selected_name = Optionmenu_Hotkey_Choice_Instance.get_selected_name()
+        if not self.selected_name:
+            display_message("Please select a name from the list.")
+            return
+        self.selected_data = exported_data.get(self.selected_name, [])
+        if self.selected_data == []:
+            display_message(f"No data found for name: {self.selected_name}")
+            return
+    def loop_thread(self):
+        self.get_data()
+        for action in self.selected_data:
+            if action[0] == "Hotkey":
+                hotkey = action[1]
+                break
+        keyboard.on_press_key(hotkey, self.on_hotkey_event)
+        keyboard.on_release_key(hotkey, self.on_hotkey_event)
+        display_message(f"Press {hotkey} to start/stop the loop.")
+        while self.programm_running:
+            if self.loop_running:
+                print("loop")
+                for key, value in self.selected_data:
+                    if not self.loop_running:
+                        break
+                    elif key == "Sleep":
+                        try:
+                            value = float(value)
+                            time.sleep(value)
+                        except Exception as e:
+                            print(f"{e} Fault at key {key} with value: {value}")
+                            continue
+                    elif key == "Mouse Click":
+                        mouse.click(value)  # 'value' should be 'left', 'right', or 'middle'
+                    elif key == "Mouse Double Click":
+                        mouse.double_click(value)  # 'value' should be 'left', 'right', or 'middle'
+                    elif key == "Mouse Press":
+                        mouse.press(value)  # 'value' should be 'left', 'right', or 'middle'
+                    elif key == "Mouse Release":
+                        mouse.release(value)  # 'value' should be 'left', 'right', or 'middle'
+                    elif key == "Mouse Move":
+                        x, y = map(int, value.split(','))
+                        mouse.move(x, y,False)
+                    elif key == "Absolute Mouse Move":
+                        x, y = map(int, value.split(','))
+                        mouse.move(x, y,True)
+                    elif key == "Mouse Wheel":
+                        delta = int(value)
+                        mouse.wheel(delta)
+                    elif key == "Keyboard Send":
+                        keyboard.send(value)
+                    elif key == "Keyboard Write":
+                        keyboard.write(value)
+                    elif key == "Keyboard Press":
+                        keyboard.press(value)
+                    elif key == "Keyboard Release":
+                        keyboard.release(value)
+    def on_hotkey_event(self,e):
+        if e.event_type == keyboard.KEY_DOWN:
+            if not self.falling_trigger:
+                self.falling_trigger = True
+                self.loop_running = not self.loop_running
+                if self.loop_running:
+                    display_message("Run")
+                else:
+                    display_message("Pause")
+        elif e.event_type == keyboard.KEY_UP:
+            self.falling_trigger = False
+    def start_programm(self):
+        if self.loop_thread_instance and self.loop_thread_instance.is_alive():
+            # loop thread is already running
+            return
+        self.get_data()
+        # Start Programm
+        display_message(f"{self.selected_name} loaded and ready")
+        self.programm_running = True
+        self.loop_thread_instance = threading.Thread(target=self.loop_thread)
+        self.loop_thread_instance.daemon = True  # Set as daemon thread
+        self.loop_thread_instance.start()
+        # Update GUI
+        stop_button.grid(row=0, column=0, padx=5)
+        start_button.grid_forget()
+        terminal_frame.update_idletasks
+    def stop_programm(self):
+        if not self.loop_thread_instance:
+            # loop thread is not running
+            return
+        self.get_data()
+        # Stop Programm
+        display_message(f"{self.selected_name} quitting")
+        self.programm_running = False
+        self.loop_running = False  # Stop the loop thread gracefully
+        # Update GUI
+        start_button.grid(row=0, column=0, padx=5)
+        stop_button.grid_forget()
+        terminal_frame.update_idletasks
+    def at_exit(self):
+        self.programm_running = False
+        self.loop_running = False
+        
+Hotkey_main_instance = Hotkey()
 
 '''
 
@@ -156,8 +155,7 @@ Update, Feedback and Data Functions:
 '''
 # Class and function to create and update the hotkey option menu
 class Optionmenu_Hotkey_Choice:
-    def __init__(self, master, exported_data=exported_data):
-        self.exported_data = exported_data
+    def __init__(self, master, exported_data):
         self.master = master
         self.name_key = tk.StringVar()
         self.name_key.set(" ")
@@ -169,19 +167,15 @@ class Optionmenu_Hotkey_Choice:
         # Clear the existing options
         self.name_option['menu'].delete(0, 'end')
         # Update the list of action set names
-        action_set_names = list(self.exported_data.keys())
+        action_set_names = list(exported_data.keys())
         for name in action_set_names:
             self.name_option['menu'].add_command(label=name, command=lambda name=name: self.name_key.set(name))
     def get_selected_name(self):
         return self.name_key.get()
+    @classmethod
+    def create_instance(cls, master, exported_data):
+        return cls(master, exported_data)
 
-Optionmenu_Hotkey_Choice_Instance = None
-
-def call_hotkey_name_menu(exported_data=exported_data):
-    global Optionmenu_Hotkey_Choice_Instance
-
-    if Optionmenu_Hotkey_Choice_Instance is None:
-        Optionmenu_Hotkey_Choice_Instance = Optionmenu_Hotkey_Choice(execution_frame, exported_data)
         
 # Function to display a message in the terminal
 def display_message(message):
@@ -201,7 +195,7 @@ def display_message(message):
 def save_exported_data():
     with open("exported_data.json", "w") as json_file:
         json.dump(exported_data, json_file)
-    call_hotkey_name_menu()
+    Optionmenu_Hotkey_Choice_Instance.update_name_option()
 
 # Function to load exported data from a JSON file
 def Load_exported_data():
@@ -232,7 +226,7 @@ def on_configure(event=None):
             scrollbar.grid_remove()
             action_canvas.config(scrollregion=action_canvas.bbox("all"))
 
-        call_hotkey_name_menu()
+        Optionmenu_Hotkey_Choice_Instance.update_name_option()
         action_canvas.update_idletasks()
 
 '''
@@ -390,7 +384,7 @@ def Load_actions():
         # Add a "Close" button
         close_button = tk.Button(Load_window, text="Close", command=Load_window.destroy)
         close_button.grid(row=3, columnspan=2)
-    call_hotkey_name_menu()
+    Optionmenu_Hotkey_Choice_Instance.update_name_option()
 
 # Function to save the current actions
 def save_actions():
@@ -435,7 +429,7 @@ GUI Basic Structure:
 
 
 '''
-atexit.register(stop_programm)
+atexit.register(Hotkey_main_instance.at_exit)
 # Create the main Tkinter window
 root = tk.Tk()
 root.title("Hotkey Handler")
@@ -490,13 +484,14 @@ terminal_label.grid(row=1, column=0, sticky="w")
 terminal = scrolledtext.ScrolledText(terminal_frame, wrap=tk.WORD, state=tk.DISABLED, width=75, height=10)
 terminal.grid(row=2, column=0, sticky="n")
     
-start_button = tk.Button(execution_frame, text="Start",command=start_programm)
+start_button = tk.Button(execution_frame, text="Start",command=Hotkey_main_instance.start_programm)
 start_button.grid(row=0, column=0, padx=5)
-stop_button = tk.Button(execution_frame, text="Stop",command=stop_programm)
+stop_button = tk.Button(execution_frame, text="Stop",command=Hotkey_main_instance.stop_programm)
 
 # Load exported data
 exported_data.update(Load_exported_data())
 
-call_hotkey_name_menu()
+# Create an instance of Optionmenu_Hotkey_Choice
+Optionmenu_Hotkey_Choice_Instance = Optionmenu_Hotkey_Choice.create_instance(execution_frame, exported_data)
 
 root.mainloop()
