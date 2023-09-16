@@ -5,7 +5,6 @@ from tkinter import scrolledtext
 import json
 import threading
 import atexit
-from Hotkey_Stable_v2 import Hotkey
 from typing import Callable
 import keyboard
 import mouse
@@ -451,7 +450,7 @@ terminal_label.grid(row=1, column=0, sticky="w")
 
 terminal = scrolledtext.ScrolledText(terminal_frame, wrap=tk.WORD, state=tk.DISABLED, width=75, height=10)
 terminal.grid(row=2, column=0, sticky="n")
-    
+
 start_button = tk.Button(execution_frame, text="Start",command=programm_run_switch)
 start_button.grid(row=0, column=0, padx=5)
 stop_button = tk.Button(execution_frame, text="Stop",command=programm_run_switch)
