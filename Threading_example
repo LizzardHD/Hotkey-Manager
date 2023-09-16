@@ -1,0 +1,46 @@
+import threading
+import time
+
+# Flags to control the threads
+outer_running = False
+inner_running = False
+
+
+def inner_thread():
+    global inner_running
+    while outer_running:
+        if inner_running:
+            for i in range(100):
+                print("\nInner thread is running")
+                if not inner_running:
+                    break
+                time.sleep(3)
+
+def outer_thread():
+    global inner_running, outer_running
+    inner_thread_instance = threading.Thread(target=inner_thread)
+    inner_thread_instance.start()
+
+    while outer_running:
+        command = input("Enter a command (start/stop): ").strip().lower()
+        if command == "start":
+            inner_running = True
+        elif command == "stop":
+            inner_running = False
+        else:
+            print("Invalid command")
+
+    inner_running = False  # Stop the inner thread gracefully
+    inner_thread_instance.join()
+
+while True:
+    command = input("Enter a main command (init/quit): ")
+    if command == "init":
+        # Start the outer thread
+        outer_running = True
+        outer_thread_instance = threading.Thread(target=outer_thread)
+        outer_thread_instance.start()
+        # Wait for the outer thread to finish
+        outer_thread_instance.join()
+    elif command == "quit":
+        outer_running == False
