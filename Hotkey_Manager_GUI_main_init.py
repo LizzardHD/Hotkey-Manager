@@ -23,9 +23,6 @@ action_set_name = ""
 action_add_run_times = 0
 display_message_run_times = 0
 
-# Variables for starting and stopping the Hotkey
-hotkey_switch = False
-stop_command = False
 '''
 
 
@@ -35,131 +32,120 @@ Hotkey Function:
 
 
 '''
-# Function to add a hotkey with a loop
-def Hotkey(actionlist:list[list],printer: Callable):
-    running = False
-    falling_trigger = False
+# Variables for starting and stopping the Hotkey
+programm_running = False
+loop_running = False
+falling_trigger = False
+
+# Create a global variable to store the reference to the loop thread
+loop_thread_instance = None
+
+def loop_thread(actionlist: list[list]):
+    global loop_running
     for action in actionlist:
         if action[0] == "Hotkey":
-            myhotkey = action[1]
+            hotkey = action[1]
             break
-        
-    def loop_function():
-        global hotkey_switch
-        while running:
-            if hotkey_switch == True:
-                print("loop")
-                for key, value in actionlist:
-                    if key == "Sleep":
-                        try:
-                            value = float(value)
-                            time.sleep(value)
-                        except Exception as e:
-                            print(f"{e} Fault at key {key} with value: {value}")
-                            continue
-                    elif key == "Mouse Click":
-                        mouse.click(value)  # 'value' should be 'left', 'right', or 'middle'
-                    elif key == "Mouse Double Click":
-                        mouse.double_click(value)  # 'value' should be 'left', 'right', or 'middle'
-                    elif key == "Mouse Press":
-                        mouse.press(value)  # 'value' should be 'left', 'right', or 'middle'
-                    elif key == "Mouse Release":
-                        mouse.release(value)  # 'value' should be 'left', 'right', or 'middle'
-                    elif key == "Mouse Move":
-                        x, y = map(int, value.split(','))
-                        mouse.move(x, y,False)
-                    elif key == "Absolute Mouse Move":
-                        x, y = map(int, value.split(','))
-                        mouse.move(x, y,True)
-                    elif key == "Mouse Wheel":
-                        delta = int(value)
-                        mouse.wheel(delta)
-                    elif key == "Keyboard Send":
-                        keyboard.send(value)
-                    elif key == "Keyboard Write":
-                        keyboard.write(value)
-                    elif key == "Keyboard Press":
-                        keyboard.press(value)
-                    elif key == "Keyboard Release":
-                        keyboard.release(value)
+    keyboard.on_press_key(hotkey, on_hotkey_event)
+    keyboard.on_release_key(hotkey, on_hotkey_event)
+    display_message(f"Press {hotkey} to start/stop the loop.")
+    while programm_running:
+        if loop_running:
+            print("loop")
+            for key, value in actionlist:
+                if not loop_running:
+                    break
+                elif key == "Sleep":
+                    try:
+                        value = float(value)
+                        time.sleep(value)
+                    except Exception as e:
+                        print(f"{e} Fault at key {key} with value: {value}")
+                        continue
+                elif key == "Mouse Click":
+                    mouse.click(value)  # 'value' should be 'left', 'right', or 'middle'
+                elif key == "Mouse Double Click":
+                    mouse.double_click(value)  # 'value' should be 'left', 'right', or 'middle'
+                elif key == "Mouse Press":
+                    mouse.press(value)  # 'value' should be 'left', 'right', or 'middle'
+                elif key == "Mouse Release":
+                    mouse.release(value)  # 'value' should be 'left', 'right', or 'middle'
+                elif key == "Mouse Move":
+                    x, y = map(int, value.split(','))
+                    mouse.move(x, y,False)
+                elif key == "Absolute Mouse Move":
+                    x, y = map(int, value.split(','))
+                    mouse.move(x, y,True)
+                elif key == "Mouse Wheel":
+                    delta = int(value)
+                    mouse.wheel(delta)
+                elif key == "Keyboard Send":
+                    keyboard.send(value)
+                elif key == "Keyboard Write":
+                    keyboard.write(value)
+                elif key == "Keyboard Press":
+                    keyboard.press(value)
+                elif key == "Keyboard Release":
+                    keyboard.release(value)
+
+def on_hotkey_event(e):
+    global loop_running, falling_trigger
+    if e.event_type == keyboard.KEY_DOWN:
+        if not falling_trigger:
+            falling_trigger = True
+            loop_running = not loop_running
+            if loop_running:
+                display_message("Run")
             else:
-                print(hotkey_switch)
-                output_loop.join()
-                keyboard.unhook_all()
-                return
+                display_message("Pause")
+    elif e.event_type == keyboard.KEY_UP:
+        falling_trigger = False
 
-    def on_hotkey_event(e):
-        nonlocal running, falling_trigger
-
-        if e.event_type == keyboard.KEY_DOWN:
-            if not falling_trigger:
-                running = not running
-                falling_trigger = True
-                if running:
-                    try:
-                        output_loop.start()
-                    except:
-                        pass
-                    finally:
-                        printer("Loop started")
-                else:
-                    try:
-                        output_loop.daemon = True
-                    except:
-                        pass
-                    finally:
-                        printer("Loop stopped")
-
-        elif e.event_type == keyboard.KEY_UP:
-            falling_trigger = False
-
-    printer("Press %s to start/stop the loop." % myhotkey)
-    output_loop = threading.Thread(target=loop_function)
-    if hotkey_switch:
-        keyboard.on_press_key(myhotkey, on_hotkey_event)
-        keyboard.on_release_key(myhotkey, on_hotkey_event)
-
-def exit_handler():
-    global hotkey_switch
-    hotkey_switch = False
-    return
-
-def programm_run_switch():
-    global hotkey_switch, stop_command
-
+def start_programm():
+    global programm_running, loop_thread_instance
+    if loop_thread_instance and loop_thread_instance.is_alive():
+        # loop thread is already running
+        return
     # Get the selected name (key) from the OptionMenu
     selected_name = Optionmenu_Hotkey_Choice_Instance.get_selected_name()
-
     if not selected_name:
         display_message("Please select a name from the list.")
         return
-    
-    if hotkey_switch:
-        # State Switch
-        hotkey_switch = False
-        stop_command = True
-        display_message(f"{selected_name} stopped")
-        # Button Switch
-        start_button.grid(row=0, column=0, padx=5)
-        stop_button.grid_forget()
-    else:
-        # Get Data
-        selected_data = exported_data.get(selected_name, [])
-        if selected_data == []:
-            display_message("Name contains no Hotkey")
-            return
-        # State Switch
-        hotkey_switch = True
-        stop_command = False
-        display_message(f"{selected_name} started")
-        # Call the Function
-        Hotkey(selected_data,display_message)
-        # Button Switch
-        stop_button.grid(row=0, column=0, padx=5)
-        start_button.grid_forget()
-    
-
+    # Get Data
+    selected_data = exported_data.get(selected_name, [])
+    if selected_data == []:
+        display_message(f"No data found for name: {selected_name}")
+        return
+    # Start Programm
+    display_message(f"{selected_name} loaded and ready")
+    programm_running = True
+    loop_thread_instance = threading.Thread(target=loop_thread, args=(selected_data, display_message))
+    loop_thread_instance.daemon = True  # Set as daemon thread
+    loop_thread_instance.start()
+    # Update GUI
+    stop_button.grid(row=0, column=0, padx=5)
+    start_button.grid_forget()
     terminal_frame.update_idletasks
+
+def stop_programm():
+    global programm_running, loop_running
+    if not loop_thread_instance:
+        # loop thread is not running
+        return
+    # Get the selected name (key) from the OptionMenu
+    selected_name = Optionmenu_Hotkey_Choice_Instance.get_selected_name()
+    if not selected_name:
+        display_message("Please select a name from the list.")
+        return
+    # Stop Programm
+    display_message(f"{selected_name} quitting")
+    programm_running = False
+    loop_running = False  # Stop the loop thread gracefully
+    # Update GUI
+    start_button.grid(row=0, column=0, padx=5)
+    stop_button.grid_forget()
+    terminal_frame.update_idletasks
+
 '''
 
 
@@ -302,11 +288,12 @@ def add_action(action_type="Sleep", action_value=""):
         new_action_type_option_menu = tk.OptionMenu(new_action_frame, new_action_type_combobox, "Hotkey")
     else:
         new_action_type_option_menu = tk.OptionMenu(new_action_frame, new_action_type_combobox,
-                                                    "Sleep", "Mouse Click",
-                                                    "Mouse Double Click", "Mouse Press",
-                                                    "Mouse Release", "Mouse Move", "Mouse Wheel",
-                                                    "Keyboard Send", "Keyboard Write",
-                                                    "Keyboard Press", "Keyboard Release")
+                                                    "Sleep",                "Mouse Click",
+                                                    "Mouse Double Click",   "Mouse Press",
+                                                    "Mouse Release",        "Absolute Mouse Move", 
+                                                    "Mouse Move",           "Mouse Wheel",
+                                                    "Keyboard Send",        "Keyboard Write",
+                                                    "Keyboard Press",       "Keyboard Release")
     new_action_type_option_menu.config(width=20)
     new_action_type_option_menu.grid(row=0, column=1, sticky="w")
 
@@ -448,7 +435,7 @@ GUI Basic Structure:
 
 
 '''
-atexit.register(exit_handler)
+atexit.register(stop_programm)
 # Create the main Tkinter window
 root = tk.Tk()
 root.title("Hotkey Handler")
@@ -503,9 +490,9 @@ terminal_label.grid(row=1, column=0, sticky="w")
 terminal = scrolledtext.ScrolledText(terminal_frame, wrap=tk.WORD, state=tk.DISABLED, width=75, height=10)
 terminal.grid(row=2, column=0, sticky="n")
     
-start_button = tk.Button(execution_frame, text="Start",command=programm_run_switch)
+start_button = tk.Button(execution_frame, text="Start",command=start_programm)
 start_button.grid(row=0, column=0, padx=5)
-stop_button = tk.Button(execution_frame, text="Stop",command=programm_run_switch)
+stop_button = tk.Button(execution_frame, text="Stop",command=stop_programm)
 
 # Load exported data
 exported_data.update(Load_exported_data())

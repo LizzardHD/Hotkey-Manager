@@ -6,7 +6,7 @@ import tkinter as tk
 # Flags to control the threads
 outer_running = False
 inner_running = False
-
+falling_trigger = False
 # Create a hotkey
 hotkey = "space"
 
@@ -15,15 +15,19 @@ def inner_thread():
     while outer_running:
         if inner_running:
             for i in range(3000):
-                print("\nInner thread is running")
+                print(f"Inner thread is running{i}")
                 if not inner_running:
                     break
                 time.sleep(1)
 
 def on_hotkey_event(e):
-    global inner_running
+    global inner_running, falling_trigger
     if e.event_type == keyboard.KEY_DOWN:
-        inner_running = not inner_running
+        if not falling_trigger:
+            falling_trigger = True
+            inner_running = not inner_running
+    elif e.event_type == keyboard.KEY_UP:
+        falling_trigger = False
 
 def start_outer_thread():
     global outer_running, inner_thread_instance
@@ -50,5 +54,5 @@ stop_button.pack()
 
 # Register the hotkey event
 keyboard.on_press_key(hotkey, on_hotkey_event)
-
+keyboard.on_release_key(hotkey, on_hotkey_event)
 root.mainloop()
