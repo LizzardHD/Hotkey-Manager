@@ -1,46 +1,54 @@
 import threading
+import keyboard
 import time
+import tkinter as tk
 
 # Flags to control the threads
 outer_running = False
 inner_running = False
 
+# Create a hotkey
+hotkey = "space"
 
 def inner_thread():
     global inner_running
     while outer_running:
         if inner_running:
-            for i in range(100):
+            for i in range(3000):
                 print("\nInner thread is running")
                 if not inner_running:
                     break
-                time.sleep(3)
+                time.sleep(1)
 
-def outer_thread():
-    global inner_running, outer_running
+def on_hotkey_event(e):
+    global inner_running
+    if e.event_type == keyboard.KEY_DOWN:
+        inner_running = not inner_running
+
+def start_outer_thread():
+    global outer_running, inner_thread_instance
+    outer_running = True
     inner_thread_instance = threading.Thread(target=inner_thread)
+    inner_thread_instance.daemon = True  # Set as daemon thread
     inner_thread_instance.start()
 
-    while outer_running:
-        command = input("Enter a command (start/stop): ").strip().lower()
-        if command == "start":
-            inner_running = True
-        elif command == "stop":
-            inner_running = False
-        else:
-            print("Invalid command")
-
+def stop_outer_thread():
+    global outer_running, inner_running
+    outer_running = False
     inner_running = False  # Stop the inner thread gracefully
-    inner_thread_instance.join()
 
-while True:
-    command = input("Enter a main command (init/quit): ")
-    if command == "init":
-        # Start the outer thread
-        outer_running = True
-        outer_thread_instance = threading.Thread(target=outer_thread)
-        outer_thread_instance.start()
-        # Wait for the outer thread to finish
-        outer_thread_instance.join()
-    elif command == "quit":
-        outer_running == False
+# Create a tkinter window
+root = tk.Tk()
+root.title("Thread Control")
+
+# Create buttons to start and stop the outer thread
+start_button = tk.Button(root, text="Start Outer Thread", command=start_outer_thread)
+stop_button = tk.Button(root, text="Stop Outer Thread", command=stop_outer_thread)
+
+start_button.pack()
+stop_button.pack()
+
+# Register the hotkey event
+keyboard.on_press_key(hotkey, on_hotkey_event)
+
+root.mainloop()
