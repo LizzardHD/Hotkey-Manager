@@ -26,24 +26,16 @@ display_message_run_times = 0
 # Variables for starting and stopping the Hotkey
 hotkey_switch = False
 stop_command = False
-'''
 
-
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Hotkey Function:
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-'''
 # Function to add a hotkey with a loop
-def Hotkey(actionlist:list[list],printer: Callable):
+def Hotkey(actionlist:type[list],printer: Callable):
     running = False
     falling_trigger = False
     for action in actionlist:
         if action[0] == "Hotkey":
             myhotkey = action[1]
             break
-        
+
     def loop_function():
         global hotkey_switch
         while running:
@@ -118,85 +110,9 @@ def Hotkey(actionlist:list[list],printer: Callable):
     if hotkey_switch:
         keyboard.on_press_key(myhotkey, on_hotkey_event)
         keyboard.on_release_key(myhotkey, on_hotkey_event)
-
-def exit_handler():
-    global hotkey_switch
-    hotkey_switch = False
-    return
-
-def programm_run_switch():
-    global hotkey_switch, stop_command
-
-    # Get the selected name (key) from the OptionMenu
-    selected_name = Optionmenu_Hotkey_Choice_Instance.get_selected_name()
-
-    if not selected_name:
-        display_message("Please select a name from the list.")
-        return
-    
-    if hotkey_switch:
-        # State Switch
-        hotkey_switch = False
-        stop_command = True
-        display_message(f"{selected_name} stopped")
-        # Button Switch
-        start_button.grid(row=0, column=0, padx=5)
-        stop_button.grid_forget()
-    else:
-        # Get Data
-        selected_data = exported_data.get(selected_name, [])
-        if selected_data == []:
-            display_message("Name contains no Hotkey")
-            return
-        # State Switch
-        hotkey_switch = True
-        stop_command = False
-        display_message(f"{selected_name} started")
-        # Call the Function
-        Hotkey(selected_data,display_message)
-        # Button Switch
-        stop_button.grid(row=0, column=0, padx=5)
-        start_button.grid_forget()
     
 
-    terminal_frame.update_idletasks
-'''
 
-
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Update, Feedback and Data Functions:
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-'''
-# Class and function to create and update the hotkey option menu
-class Optionmenu_Hotkey_Choice:
-    def __init__(self, master, exported_data=exported_data):
-        self.exported_data = exported_data
-        self.master = master
-        self.name_key = tk.StringVar()
-        self.name_key.set(" ")
-        self.name_option = tk.OptionMenu(master, self.name_key, *list(exported_data.keys()), command=self.update_name_option)
-        self.name_option.grid(row=1, column=0, pady=10)
-        self.name_option.config(width=25)
-        self.update_name_option()  # Initialize the OptionMenu
-    def update_name_option(self):
-        # Clear the existing options
-        self.name_option['menu'].delete(0, 'end')
-        # Update the list of action set names
-        action_set_names = list(self.exported_data.keys())
-        for name in action_set_names:
-            self.name_option['menu'].add_command(label=name, command=lambda name=name: self.name_key.set(name))
-    def get_selected_name(self):
-        return self.name_key.get()
-
-Optionmenu_Hotkey_Choice_Instance = None
-
-def call_hotkey_name_menu(exported_data=exported_data):
-    global Optionmenu_Hotkey_Choice_Instance
-
-    if Optionmenu_Hotkey_Choice_Instance is None:
-        Optionmenu_Hotkey_Choice_Instance = Optionmenu_Hotkey_Choice(execution_frame, exported_data)
 # Function to display a message in the terminal
 def display_message(message):
     global display_message_run_times
@@ -215,7 +131,7 @@ def display_message(message):
 def save_exported_data():
     with open("exported_data.json", "w") as json_file:
         json.dump(exported_data, json_file)
-    call_hotkey_name_menu()
+    update_option_menu()
 
 # Function to load exported data from a JSON file
 def Load_exported_data():
@@ -225,39 +141,79 @@ def Load_exported_data():
     except FileNotFoundError:
         return {}
 
+def update_option_menu():
+    # Clear the existing options
+    name_option['menu'].delete(0, 'end')
+    # Update the list of action set names
+    action_set_names = list(exported_data.keys())
+    for name in action_set_names:
+        name_option['menu'].add_command(label=name, command=tk._setit(name_key, name))
+
+
+def exit_handler():
+    global hotkey_switch
+    hotkey_switch = False
+    return
+
+def programm_run_switch():
+    global hotkey_switch, stop_command
+
+    # Get the selected name (key) from the OptionMenu
+    selected_name = name_key.get()
+
+    if not selected_name:
+        display_message("Please select a name from the list.")
+        return
+    
+    if hotkey_switch:
+        # State Switch
+        hotkey_switch = False
+        stop_command = True
+        display_message(f"{selected_name} stopped")
+        # Button Switch
+        start_button.grid(row=0, column=0, padx=5)
+        stop_button.grid_forget()
+    else:
+        # State Switch
+        hotkey_switch = True
+        stop_command = False
+        display_message(f"{selected_name} started")
+        # Call the Function
+        selected_data = exported_data.get(selected_name, [])
+        Hotkey(selected_data,display_message)
+        # Button Switch
+        stop_button.grid(row=0, column=0, padx=5)
+        start_button.grid_forget()
+    
+
+    terminal_frame.update_idletasks
+
+
 # Function to update the canvas and action frame position
 def on_configure(event=None):
-        action_canvas.configure(scrollregion=action_canvas.bbox("all"))
+    action_canvas.configure(scrollregion=action_canvas.bbox("all"))
 
-        if action_canvas.winfo_width() > action_frame.winfo_reqwidth():
-            x_position = (action_canvas.winfo_width() - action_frame.winfo_reqwidth()) / 2 + action_frame.winfo_reqwidth() / 2
-            action_canvas.coords(action_frame_place, x_position, 0)
-        else:
-            x_position = action_canvas.winfo_width() / 2
-            action_canvas.coords(action_frame_place, x_position, 0)
+    if action_canvas.winfo_width() > action_frame.winfo_reqwidth():
+        x_position = (action_canvas.winfo_width() - action_frame.winfo_reqwidth()) / 2 + action_frame.winfo_reqwidth() / 2
+        action_canvas.coords(action_frame_place, x_position, 0)
+    else:
+        x_position = action_canvas.winfo_width() / 2
+        action_canvas.coords(action_frame_place, x_position, 0)
 
-        total_child_height = sum(child.winfo_reqheight() for child in action_frame.winfo_children())
-        action_canvas.config(height=min(300, total_child_height))
+    total_child_height = sum(child.winfo_reqheight() for child in action_frame.winfo_children())
+    action_canvas.config(height=min(300, total_child_height))
 
-        if action_frame.winfo_reqheight() > action_canvas.winfo_height():
-            scrollbar.grid(row=2, column=1, sticky="ns")
-            action_canvas.config(scrollregion=action_canvas.bbox("all"))
-        else:
-            scrollbar.grid_remove()
-            action_canvas.config(scrollregion=action_canvas.bbox("all"))
+    if action_frame.winfo_reqheight() > action_canvas.winfo_height():
+        scrollbar.grid(row=2, column=1, sticky="ns")
+        action_canvas.config(scrollregion=action_canvas.bbox("all"))
+    else:
+        scrollbar.grid_remove()
+        action_canvas.config(scrollregion=action_canvas.bbox("all"))
 
-        call_hotkey_name_menu()
-        action_canvas.update_idletasks()
-
-'''
+    update_option_menu()
+    action_canvas.update_idletasks()
 
 
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Main GUI Functions:
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-'''
 # Function to add an action
 def add_action(action_type="Sleep", action_value=""):
     global action_add_run_times
@@ -403,7 +359,7 @@ def Load_actions():
         # Add a "Close" button
         close_button = tk.Button(Load_window, text="Close", command=Load_window.destroy)
         close_button.grid(row=3, columnspan=2)
-    call_hotkey_name_menu()
+    update_option_menu()
 
 # Function to save the current actions
 def save_actions():
@@ -439,15 +395,7 @@ def save_actions():
     # Add an "Enter" button to confirm the name
     enter_button = tk.Button(save_window, text="Enter", command=save_with_name)
     enter_button.grid()
-'''
 
-
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-GUI Basic Structure:
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-'''
 atexit.register(exit_handler)
 # Create the main Tkinter window
 root = tk.Tk()
@@ -510,6 +458,10 @@ stop_button = tk.Button(execution_frame, text="Stop",command=programm_run_switch
 # Load exported data
 exported_data.update(Load_exported_data())
 
-call_hotkey_name_menu()
+name_key = tk.StringVar()
+name_key.set(" ")
+name_option = tk.OptionMenu(execution_frame, name_key,*list(exported_data.keys()),command=exported_data.update(Load_exported_data()))
+name_option.grid(row=1, column=0, pady=10)
+name_option.config(width=25)
 
 root.mainloop()
