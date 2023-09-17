@@ -142,7 +142,7 @@ Hotkey_main_instance = Hotkey()
 
 
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Main GUI Classes:
+Support GUI Classes:
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -170,24 +170,27 @@ class Optionmenu_Hotkey_Choice:
     def create_instance(cls, master, exported_data):
         return cls(master, exported_data)
 # Class to save the current actions
-class save_action_set:
-    def __init__(self):
-        self.current_data = []
+class saver:
+    
+    @staticmethod
     def save_creator(self):
+        # Reload data
+        app.data.update(app.Load_exported_data())
+        self.current_data = []
         # Create a new window for exporting data
-        self.save_window = tk.Frame(app.create_widgets.manager_frame)
+        self.save_window = tk.Frame(app.manager_frame)
         self.save_window.grid(row=5, padx=10, pady=10)
         # Add a Label and an Entry widget to input the name
-        self.name_label = tk.Label(self.save_window, text="Enter a name for this action set:")
-        self.name_label.grid()
+        name_label = tk.Label(self.save_window, text="Enter a name for this action set:")
+        name_label.grid()
         self.name_entry = tk.Entry(self.save_window)
-        self.name_entry.insert(0, self.Load_actions)
         self.name_entry.grid(pady=(0, 5))
+        self.name_entry.insert(0, loader.load_action_set)
         # Add an "Enter" button to confirm the name
-        self.enter_button = tk.Button(self.save_window, text="Enter", command=self.save_with_name)
-        self.enter_button.grid()
-
-    def save_with_name(self):
+        enter_button = tk.Button(self.save_window, text="Enter", command=self.save_with_name)
+        enter_button.grid()
+    @staticmethod
+    def save_action_set(self):
         app.data.update(app.Load_exported_data())
         
         for each in range(len(app.action_type_comboboxes)):
@@ -198,84 +201,85 @@ class save_action_set:
         if name:
             app.data[name] = self.current_data
             app.save_exported_data()
-            app.display_message(f"{name}={list(self.data[name])}")
+            app.display_message(f"{name}={self.current_data}")
             self.save_window.destroy()
         else:
             app.display_message("Please enter a name.")
-    def Load_actions(self):
-        def import_data():
-            self.selected_name = import_name_var.get()
-            self.imported_data = self.data.get(self.selected_name, [])
-
-            if self.imported_data:
-                # Clear the existing GUI actions
-                for frame in self.action_frame.winfo_children():
-                    frame.destroy()
-                self.action_type_comboboxes.clear()
-                self.action_value_entries.clear()
-                # Check if the first action is "Hotkey"
-                if self.imported_data[0][0] != "Hotkey":
-                    # If not, add an empty "Hotkey" action at index 0
-                    self.imported_data.insert(0, ["Hotkey", ""])
-                # Create new action frames based on imported data
-                for action_type, action_value in self.imported_data:
-                    self.add_action(action_type, action_value)
-            else:
-                display_message(f"No data found for name: {self.selected_name}")
-
-            # Close the Load window
-            self.Load_window.destroy()
-
-        def delete_action_set():
-            self.selected_name = import_name_var.get()
-            if self.selected_name in self.data:
-                del self.data[self.selected_name]
-                self.save_exported_data()
-                self.display_message(f"Deleted action set '{self.selected_name}'")
-                # Clear the name selection
-                import_name_var.set("")
-                # Give Feedback
-                Data_deleted = tk.Label(Load_window, text=f"{self.selected_name} deleted")
-                Data_deleted.grid(row=0, columnspan=2)
-                # Clear the existing options
-                Load_option_menu['menu'].delete(0, 'end')
-                # Update the list of import names and recreate the OptionMenu
-                import_names = list(self.data.keys())
-                for name in import_names:
-                    Load_option_menu['menu'].add_command(label=name, command=tk._setit(import_name_var, name))
-            else:
-                self.display_message(f"No action set found for name: {self.selected_name}")
-
+# Class to overwrite current actions with a saved set or delete such sets
+class loader:
+    # Add the name/key of an Optionmenu
+    import_name_var = tk.StringVar()
+    import_name_var.set("") # Default selection
+    selected_name = None
+    @staticmethod
+    def load_creator(self):
         # Reload data
-        self.data.update(self.Load_exported_data())
-
+        app.data.update(app.Load_exported_data())
         # Create a new window for importing data
-        self.Load_window = tk.Frame(self.manager_frame)
+        self.Load_window = tk.Frame(app.manager_frame)
         self.Load_window.grid(row=2, padx=10, pady=(0, 10))
-
-        # Add an OptionMenu to select the name/key
-        import_name_var = tk.StringVar()
-        import_name_var.set("")  # Default selection
-        import_names = list(self.data.keys())
-        try:
-            Load_option_menu = tk.OptionMenu(self.Load_window, import_name_var, *import_names)
+        import_options = list(app.data.keys()) if app.data else []
+        Load_option_menu = tk.OptionMenu(self.Load_window, self.import_name_var, *import_options)
+        Load_option_menu.config(width=25)
+        # Add a "Load" button
+        Load_button = tk.Button(self.Load_window, text="Load", command=self.load_action_set)
+        # Add a "Delete" button
+        delete_button = tk.Button(self.Load_window, text="Delete", command=self.delete_action_set)
+        # Give No Data Feedback
+        Load_empty_list_fault = tk.Label(self.Load_window, text="No Data")
+        # Add a "Close" button
+        close_button = tk.Button(self.Load_window, text="Close", command=self.Load_window.destroy)
+        close_button.grid(row=3, columnspan=2)
+        if import_options != []:
             Load_option_menu.grid(row=1, columnspan=2)
-            Load_option_menu.config(width=25)
-            # Add a "Load" button
-            Load_button = tk.Button(self.Load_window, text="Load", command=import_data)
             Load_button.grid(row=2, column=1, sticky="w")
-            # Add a "Delete" button
-            delete_button = tk.Button(self.Load_window, text="Delete", command=delete_action_set)
             delete_button.grid(row=2, column=0, sticky="e")
-        except:
-            # Give Feedback
-            Load_empty_list_fault = tk.Label(self.Load_window, text="No Data")
+        else:
             Load_empty_list_fault.grid(row=0, columnspan=2)
-        finally:
-            # Add a "Close" button
-            close_button = tk.Button(self.Load_window, text="Close", command=self.Load_window.destroy)
-            close_button.grid(row=3, columnspan=2)
         Optionmenu_Hotkey_Choice_Instance.update_name_option()
+    @staticmethod    
+    def load_action_set(self):
+        self.selected_name = self.import_name_var.get()
+        imported_data = self.data.get(self.selected_name, [])
+        # Check data for content
+        if imported_data:
+            # Clear the existing GUI actions
+            for frame in app.action_frame.winfo_children():
+                frame.destroy()
+            app.action_type_comboboxes.clear()
+            app.action_value_entries.clear()
+            # Check if the first action is "Hotkey"
+            if imported_data[0][0] != "Hotkey":
+                # If not, add an empty "Hotkey" action at index 0
+                imported_data.insert(0, ["Hotkey", ""])
+            # Create new action frames based on imported data
+            for action_type, action_value in imported_data:
+                app.add_action(action_type, action_value)
+        else:
+            app.display_message(f"No data found for name: {self.selected_name}")
+        # Close the Load window
+        self.Load_window.destroy()
+    @staticmethod
+    def delete_action_set(self):
+        self.selected_name = self.import_name_var.get()
+        if self.selected_name in app.data:
+            del app.data[self.selected_name]
+            app.save_exported_data()
+            app.display_message(f"Deleted action set '{self.selected_name}'")
+            # Clear the name selection
+            self.import_name_var.set("")
+            # Close and reopen the window
+            self.Load_window.destroy()
+            self.load_creator()
+            # Give Feedback
+            Data_deleted = tk.Label(self.Load_window, text=f"{self.selected_name} deleted")
+            Data_deleted.grid(row=0, columnspan=2)
+        else:
+            self.display_message(f"No action set found for name: {self.selected_name}")
+            
+
+
+
 
 class Hotkey_Manager:        
     def __init__(self,root,data=exported_data):
