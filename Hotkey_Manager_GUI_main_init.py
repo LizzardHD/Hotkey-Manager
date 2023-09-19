@@ -8,7 +8,7 @@ import atexit
 import keyboard
 import mouse
 import time
-
+import re
 
 
 # Dictionary to store exported data
@@ -37,8 +37,17 @@ class Hotkey:
         # Values to act upon
         self.selected_name = None
         self.selected_data = []
+    '''
+
+
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    Data Methods:
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+    '''
+    # Get the selected name (key) from the OptionMenu
     def get_data(self):
-        # Get the selected name (key) from the OptionMenu
         self.selected_name = app.get_name_key()
         if not self.selected_name:
             app.display_message("Please select a name from the list.")
@@ -47,6 +56,7 @@ class Hotkey:
         if self.selected_data == []:
             app.display_message(f"No data found for name: {self.selected_name}")
             return
+    # Sequence of Checks to perform actions based on data
     def loop_thread(self):
         self.get_data()
         for action in self.selected_data:
@@ -94,6 +104,16 @@ class Hotkey:
                         keyboard.press(value)
                     elif key == "Keyboard Release":
                         keyboard.release(value)
+    '''
+
+
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    Trigger Methods:
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+    '''
+    # Resets and switches on button press
     def on_hotkey_event(self,e):
         if e.event_type == keyboard.KEY_DOWN:
             if not self.falling_trigger:
@@ -105,6 +125,7 @@ class Hotkey:
                     app.display_message("Pause")
         elif e.event_type == keyboard.KEY_UP:
             self.falling_trigger = False
+    # Start a looping daemon thread
     def start_programm(self):
         if self.loop_thread_instance and self.loop_thread_instance.is_alive():
             # loop thread is already running
@@ -120,6 +141,7 @@ class Hotkey:
         app.stop_button.grid(row=0, column=0, padx=5)
         app.start_button.grid_forget()
         app.terminal_frame.update_idletasks
+    # Stop a looping daemon thread
     def stop_programm(self):
         if not self.loop_thread_instance:
             # loop thread is not running
@@ -133,6 +155,7 @@ class Hotkey:
         app.start_button.grid(row=0, column=0, padx=5)
         app.stop_button.grid_forget()
         app.terminal_frame.update_idletasks
+    # Stop on closure
     def at_exit(self):
         self.programm_running = False
         self.loop_running = False
@@ -184,7 +207,7 @@ class Hotkey_Manager:
         self.load_window = tk.Frame(self.manager_frame)
         # Lower half of left frame
         self.action_canvas = tk.Canvas(self.manager_frame,highlightthickness=0,bg="grey")
-        self.action_canvas.grid(row=3, column=0)
+        self.action_canvas.grid(row=2, column=0)
         # Create a new window for exporting data in left frame
         self.save_window = tk.Frame(self.manager_frame)
         # Upper Half of right frame
@@ -199,7 +222,7 @@ class Hotkey_Manager:
         self.action_frame_place = self.action_canvas.create_window((0, 0), window=self.action_frame, anchor="n")
         # Buttons for data functionality in upper half of left frame
         add_action_button = ttk.Button(self.manager_frame, text="Add Action", command=self.add_action,style="Custom.TButton")
-        add_action_button.grid(row=4, columnspan=10, sticky="s")
+        add_action_button.grid(row=4, columnspan=3, column=0)
         save_button = ttk.Button(self.control_frame, text="Save Actions", command=self.save,style="Custom.TButton")
         save_button.grid(row=0, column=1)
         Load_button = ttk.Button(self.control_frame, text="Load Actions", command=self.load,style="Custom.TButton")
@@ -234,8 +257,16 @@ class Hotkey_Manager:
         self.style.configure("Custom.TButton", relief="solid")
         # Initialize Hotkey
         self.add_action("Hotkey")
-    
-    # Functions for the Execution Optionmenu
+    '''
+
+
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    Support GUI Methods:
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+    '''
+    # Functions for the Execution Optionmenu in reference to hotkey class
     def update_name_option(self):
         # Clear the existing options
         self.name_option['menu'].delete(0, 'end')
@@ -257,19 +288,15 @@ class Hotkey_Manager:
         self.terminal.config(state=tk.DISABLED)  # Set the state back to disabled
         self.terminal.see(tk.END)
         self.display_message_run_times += 1
-    # Function to save exported data to a JSON file
-    def save_exported_data(self):
-        exported_data = self.data 
-        with open("exported_data.json", "w") as json_file:
-            json.dump(exported_data, json_file)
-        self.update_name_option()
-    # Function to load exported data from a JSON file
-    def Load_exported_data(self):
-        try:
-            with open("exported_data.json", "r") as json_file:
-                return json.load(json_file)
-        except FileNotFoundError:
-            return {}
+    '''
+
+
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    Canvas GUI Methods:
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+    '''
     # Function to update the canvas and action frame position
     def canvas_change(self,event=None):
         # Define the width of the canvas
@@ -299,8 +326,7 @@ class Hotkey_Manager:
         print(self.action_canvas.winfo_height()," - canvas")
         print(self.action_frame.winfo_reqheight()," - frame")
         print(total_child_height," - childs")
-        self.update_name_option()
-        
+        self.update_name_option() 
     # Function to add an action
     def add_action(self,action_type="Sleep", action_value=""):
         self.action_canvas.event_generate("<Configure>")
@@ -321,7 +347,6 @@ class Hotkey_Manager:
         new_action_label.grid(row=0, column=0)
 
         new_action_type_combobox = tk.StringVar()
-        new_action_type_combobox.set(action_type)  # Default Selection
         action_type_optionmenu_border = tk.Frame(new_action_frame, borderwidth=1,relief="groove")
         action_type_optionmenu_border.grid(row=0, column=1)
         if action_type == "Hotkey":
@@ -336,13 +361,14 @@ class Hotkey_Manager:
                                                         "Keyboard Press",       "Keyboard Release")
         new_action_type_option_menu.config(width=20)
         new_action_type_option_menu.grid(row=0, column=0)
+        new_action_type_combobox.set(action_type)  # Default Selection
 
         new_action_value_entry = ttk.Entry(new_action_frame, width=25,takefocus=False)
         new_action_value_entry.grid(row=0, column=2, pady=(1,3))
         new_action_value_entry.insert(0, action_value)  # Default Value
 
         new_delete_action_button = ttk.Button(self.manager_frame, text="X",style="Custom.TButton", command=self.delete_action)
-        new_delete_action_button.grid(row=5, columnspan=10, sticky="s")
+        new_delete_action_button.grid(row=3, columnspan=3, column=0)
 
         new_action_frame.grid_columnconfigure(0, weight=1)
         new_action_frame.grid_columnconfigure(1, weight=1)
@@ -368,6 +394,15 @@ class Hotkey_Manager:
             self.display_message("cannot delete Hotkey")
         self.action_canvas.event_generate("<Configure>")
         self.action_canvas.yview_moveto(1.0)
+    '''
+
+
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    Action Set GUI Methods:
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+    '''
     # Functions for loading and deleting data
     def load(self):
         # Clear Space to prevent stacking
@@ -376,7 +411,7 @@ class Hotkey_Manager:
         self.data.update(self.Load_exported_data())
         # Create a new window for importing data
         self.load_window = tk.Frame(self.manager_frame)
-        self.load_window.grid(row=2, padx=10, pady=(0, 10))
+        self.load_window.grid(row=1, padx=10, pady=(0, 10))
         import_options = list(self.data.keys()) if self.data else [""]
         Load_option_menu = ttk.OptionMenu(self.load_window, self.import_name_var, *import_options)
         Load_option_menu.config(width=25)
@@ -439,7 +474,6 @@ class Hotkey_Manager:
         self.save_window.destroy()
         # Reload data
         self.data.update(self.Load_exported_data())
-        self.current_data = []
         # Create a new window for exporting data
         self.save_window = tk.Frame(self.manager_frame)
         self.save_window.grid(row=5, padx=10, pady=10)
@@ -455,20 +489,141 @@ class Hotkey_Manager:
         enter_button.grid()
     def save_action_set(self):
         self.data.update(self.Load_exported_data())
-        
+        self.current_actions_nested_list = []
         for each in range(len(self.action_type_comboboxes)):
             action_type = self.action_type_comboboxes[each].get()
             action_value = self.action_value_entries[each].get()
-            self.current_data.append((action_type, action_value))
+            self.current_actions_nested_list.append((action_type, action_value))
         name = self.name_entry.get()
         if name:
-            self.data[name] = self.current_data
-            self.save_exported_data()
-            self.display_message(f"{name}={self.current_data}")
-            self.save_window.destroy()
+            if not self.check_data_for_export() == False:
+                self.data[name] = self.current_actions_nested_list
+                self.display_message(f"{name}={self.current_actions_nested_list}")
+                self.save_window.destroy()
+            else:
+                self.save_window.destroy()
         else:
-            self.display_message("Please enter a name.")
+                self.display_message("Please enter a name.")
+    '''
 
+
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    Data Verification Methods:
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+    '''
+    # Function to verify the value inputs
+    def check_data_for_export(self):
+        fault_list = []
+        common_keys = [
+                    "enter","space","esc","backspace","delete","insert","tab","capslock",
+                    "numlock","pause","print","home","end","pageup","pagedown",
+                    "up","down","left","right","ctrl","alt","shift",
+                    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+                    "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+                    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
+                    "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "+",
+                    "-", "=", "[", "]", "{", "}", ";", ":", "'", "\"", ",", ".", "<", ">", "/", 
+                    "?","`","´","°","~",
+                    "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12",
+                    "num1", "num2", "num3", "num4", "num5", "num6", "num7", "num8", "num9", "num0",
+                    "num*", "num-", "num+", "num.", "num/","scrolllock"
+                    ]
+        for key, value in self.current_actions_nested_list:
+            if key == "Sleep": 
+                if re.match(r'^\s*-?\d+(\.\d+)?\s*$',value):
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: number - unit: seconds")
+                    fault_list.append(key)
+            elif key == "Mouse Click":
+                if value in ["right","left","middle"]:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be either: right, left, middle")
+                    fault_list.append(key)
+            elif key == "Mouse Double Click":
+                if value in ["right","left","middle"]:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be either: right, left, middle")
+                    fault_list.append(key)
+            elif key == "Mouse Press":
+                if value in ["right","left","middle"]:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be either: right, left, middle")
+                    fault_list.append(key)
+            elif key == "Mouse Release":
+                if value in ["right","left","middle"]:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be either: right, left, middle")
+                    fault_list.append(key)
+            elif key == "Mouse Move":
+                if re.match(r'^\s*-?\d+,-?\d+\s*$', value):
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: int number - form: number_1, number_2")
+                    fault_list.append(key)
+            elif key == "Absolute Mouse Move":
+                if re.match(r'^\s*-?\d+,-?\d+\s*$', value):
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: int number - form: number_1, number_2")
+                    fault_list.append(key)
+            elif key == "Mouse Wheel":
+                if re.match(r'^\s*-?\d+\s*$',value):
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: int number")
+                    fault_list.append(key)
+            elif key == "Keyboard Send":
+                if value in common_keys:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
+                    fault_list.append(key)
+            elif key == "Keyboard Press":
+                if value in common_keys:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
+                    fault_list.append(key)
+            elif key == "Keyboard Release":
+                if value in common_keys:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
+                    fault_list.append(key)
+            elif key == "Hotkey":
+                if value in common_keys:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
+                    fault_list.append(key)        
+            # Skipping check for Keyboard Write since any string is ok
+        # Evaluation to request saving if no fault
+        if fault_list == []:
+            self.save_exported_data()
+        else:
+            self.display_message(f"{len(fault_list)} errors have been found" if len(fault_list)>1 else "1 error has been found")
+            return False
+    # Function to save exported data to a JSON file
+    def save_exported_data(self):
+        print("hi")
+        exported_data = self.data 
+        with open("exported_data.json", "w") as json_file:
+            json.dump(exported_data, json_file)
+        self.update_name_option()
+    # Function to load exported data from a JSON file
+    def Load_exported_data(self):
+        try:
+            with open("exported_data.json", "r") as json_file:
+                return json.load(json_file)
+        except FileNotFoundError:
+            return {}
 
 
 app = Hotkey_Manager(root)
