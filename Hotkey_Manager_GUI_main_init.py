@@ -499,6 +499,7 @@ class Hotkey_Manager:
             if not self.check_data_for_export() == False:
                 self.data[name] = self.current_actions_nested_list
                 self.display_message(f"{name}={self.current_actions_nested_list}")
+                self.save_exported_data()
                 self.save_window.destroy()
             else:
                 self.save_window.destroy()
@@ -606,13 +607,12 @@ class Hotkey_Manager:
             # Skipping check for Keyboard Write since any string is ok
         # Evaluation to request saving if no fault
         if fault_list == []:
-            self.save_exported_data()
+            return True
         else:
             self.display_message(f"{len(fault_list)} errors have been found" if len(fault_list)>1 else "1 error has been found")
             return False
     # Function to save exported data to a JSON file
     def save_exported_data(self):
-        print("hi")
         exported_data = self.data 
         with open("exported_data.json", "w") as json_file:
             json.dump(exported_data, json_file)
