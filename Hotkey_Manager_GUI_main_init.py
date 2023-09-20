@@ -10,13 +10,6 @@ import mouse
 import time
 import re
 
-
-# Dictionary to store exported data
-exported_data = {}
-# Create the main Tkinter window and Class Instances
-root = tk.Tk()
-
-
 '''
 
 
@@ -26,7 +19,7 @@ Hotkey Class:
 
 
 '''
-class Hotkey:
+class Hotkey_Loop:
     def __init__(self):
         # Variables for starting and stopping the Hotkey
         self.programm_running = False
@@ -48,11 +41,11 @@ class Hotkey:
     '''
     # Get the selected name (key) from the OptionMenu
     def get_data(self):
-        self.selected_name = app.get_name_key()
+        self.selected_name = app.execute_name.get()
         if not self.selected_name:
             app.display_message("Please select a name from the list.")
             return
-        self.selected_data = exported_data.get(self.selected_name, [])
+        self.selected_data = app.data.get(self.selected_name, [])
         if self.selected_data == []:
             app.display_message(f"No data found for name: {self.selected_name}")
             return
@@ -159,7 +152,7 @@ class Hotkey:
     def at_exit(self):
         self.programm_running = False
         self.loop_running = False
-Hotkey_main_instance = Hotkey()
+
 '''
 
 
@@ -169,24 +162,53 @@ Main GUI Class:
 
 
 '''
-class Hotkey_Manager:        
-    def __init__(self,window):
-        self.root = window
-        if not isinstance(self.root,tk.Tk):
-            print(f"Error in Datatype of {root} should be instance tk.Tk")
-            return
-        self.root.title("Hotkey Handler")
-        self.root.resizable(False, False)
-        self.root.columnconfigure(0, weight=1)
-        self.Load_exported_data()
+class Hotkey_Manager:   
+    '''
+
+
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    Base GUI Methods:
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+    '''     
+    def __init__(self):
+        
+        self.root = None
+
         # Define and initialize main variables
         self.action_add_run_times = 0
         self.display_message_run_times = 0
         self.action_type_comboboxes = []
         self.action_value_entries = []
         self.action_new_frame_list = []
-        self.data = exported_data
         self.imported_data = []
+        # Load data
+        self.data = dict()
+        self.data.update(self.load_exported_data())
+        # Define GUI variables
+        self.manager_frame = None
+        self.control_frame = None
+        self.terminal = None
+        self.terminal_frame = None
+        self.action_canvas = None
+        self.action_frame = None
+        self.action_frame_place = None
+        self.scrollbar = None
+        self.save_window = None
+        self.load_window = None
+        self.execution_frame = None
+        self.start_button = None
+        self.stop_button = None
+        self.execute_name = None
+        self.selected_name = None
+        self.name_entry = None
+    def build(self):
+        # Main Window
+        self.root = tk.Tk()
+        self.root.title("Hotkey Handler")
+        self.root.resizable(False, False)
+        self.root.columnconfigure(0, weight=1)
         # Left half of window
         self.manager_frame = tk.Frame(self.root)
         self.manager_frame.grid(row=2, column=0, sticky="n", pady=10, padx=(10, 0))
@@ -225,8 +247,8 @@ class Hotkey_Manager:
         add_action_button.grid(row=4, columnspan=3, column=0)
         save_button = ttk.Button(self.control_frame, text="Save Actions", command=self.save,style="Custom.TButton")
         save_button.grid(row=0, column=1)
-        Load_button = ttk.Button(self.control_frame, text="Load Actions", command=self.load,style="Custom.TButton")
-        Load_button.grid(row=0, column=0)
+        load_button = ttk.Button(self.control_frame, text="Load Actions", command=self.load,style="Custom.TButton")
+        load_button.grid(row=0, column=0)
         # Terminal space to display feedback in lower half of right frame
         terminal_label = ttk.Label(self.terminal_frame,text="Terminal:")
         terminal_label.grid(row=1, column=0, sticky="w")
@@ -239,24 +261,17 @@ class Hotkey_Manager:
         self.stop_button = ttk.Button(self.execution_frame, text="Stop",command=Hotkey_main_instance.stop_programm,style="Custom.TButton")
         # Add the name/key of Import Optionmenu
         self.import_name_var = tk.StringVar()
-        self.import_name_var.set("") # Default selection
-        self.selected_name = None
         # Add the name/key of Execution Optionmenu
-        self.name_key = tk.StringVar()
-        self.name_key.set(" ") # Default Selection
-        execution_options = list(self.data.keys()) if self.data else [""]
-        execution_optionmenu_border = tk.Frame(self.execution_frame, borderwidth=1,relief="groove")
-        execution_optionmenu_border.grid(row=1, column=0, pady=10)
-        self.name_option = ttk.OptionMenu(execution_optionmenu_border, self.name_key, *execution_options, command=self.update_name_option)
-        self.name_option.grid()
-        self.name_option.config(width=25)
-        self.update_name_option()  # Initialize the OptionMenu
+        self.execute_name = tk.StringVar()
+        self.execution_option_reload()
         # Create a Sytle
         self.style = ttk.Style()
         # Define a custom style for the normal state
         self.style.configure("Custom.TButton", relief="solid")
         # Initialize Hotkey
         self.add_action("Hotkey")
+    def run(self):
+        self.root.mainloop()
     '''
 
 
@@ -266,17 +281,22 @@ class Hotkey_Manager:
 
 
     '''
-    # Functions for the Execution Optionmenu in reference to hotkey class
-    def update_name_option(self):
-        # Clear the existing options
-        self.name_option['menu'].delete(0, 'end')
-        # Update the list of action set names
-        action_set_names = list(self.data.keys())
-        for name in action_set_names:
-            self.name_option['menu'].add_command(label=name, command=lambda name=name: self.name_key.set(name))
-    def get_name_key(self):
-        return self.name_key.get()
-    # Function to display a message in the terminal
+    # Methods for the Execution Optionmenu in reference to hotkey class
+    def execution_option_reload(self):
+        # Reload Data
+        self.data.update(self.load_exported_data())
+        # Reload Menu
+        try:
+            execution_optionmenu.destroy()
+        except:
+            execution_optionmenu_border = tk.Frame(self.execution_frame, borderwidth=1,relief="groove")
+            execution_optionmenu_border.grid(row=1, column=0, pady=10)
+        execution_options = list(self.data.keys()) if self.data else [""]
+        execution_optionmenu = ttk.OptionMenu(execution_optionmenu_border, self.execute_name, *execution_options)
+        execution_optionmenu.grid()
+        execution_optionmenu.config(width=25)
+        self.execute_name.set(" ") # Default Selection
+    # Method to display a message in the terminal
     def display_message(self,message):
         if self.display_message_run_times > 999:
             self.display_message_run_times = 0
@@ -297,7 +317,7 @@ class Hotkey_Manager:
 
 
     '''
-    # Function to update the canvas and action frame position
+    # Method to update the canvas and action frame position
     def canvas_change(self,event=None):
         # Define the width of the canvas
         self.action_canvas.config(width=self.action_frame.winfo_reqwidth())
@@ -326,8 +346,7 @@ class Hotkey_Manager:
         print(self.action_canvas.winfo_height()," - canvas")
         print(self.action_frame.winfo_reqheight()," - frame")
         print(total_child_height," - childs")
-        self.update_name_option() 
-    # Function to add an action
+    # Method to add an action
     def add_action(self,action_type="Sleep", action_value=""):
         self.action_canvas.event_generate("<Configure>")
         if self.action_add_run_times == 0:
@@ -403,34 +422,37 @@ class Hotkey_Manager:
 
 
     '''
-    # Functions for loading and deleting data
+    # Methods for loading and deleting data
     def load(self):
         # Clear Space to prevent stacking
         self.load_window.destroy()
         # Reload data
-        self.data.update(self.Load_exported_data())
+        self.data.update(self.load_exported_data())
         # Create a new window for importing data
         self.load_window = tk.Frame(self.manager_frame)
         self.load_window.grid(row=1, padx=10, pady=(0, 10))
         import_options = list(self.data.keys()) if self.data else [""]
-        Load_option_menu = ttk.OptionMenu(self.load_window, self.import_name_var, *import_options)
-        Load_option_menu.config(width=25)
+        load_optionmenu_border = tk.Frame(self.load_window, borderwidth=1,relief="groove")
+        load_option_menu = ttk.OptionMenu(load_optionmenu_border, self.import_name_var, *import_options)
+        load_option_menu.grid()
+        load_option_menu.config(width=25)
+        self.import_name_var.set("") # Default selection
         # Add a "Load" button
-        Load_button = ttk.Button(self.load_window, text="Load", command=self.load_action_set,style="Custom.TButton")
+        load_button = ttk.Button(self.load_window, text="Load", command=self.load_action_set,style="Custom.TButton")
         # Add a "Delete" button
         delete_button = ttk.Button(self.load_window, text="Delete", command=self.delete_action_set,style="Custom.TButton")
         # Give No Data Feedback
-        Load_empty_list_fault = ttk.Label(self.load_window, text="No Data")
+        load_empty_list_fault = ttk.Label(self.load_window, text="No Data")
         # Add a "Close" button
         close_button = ttk.Button(self.load_window, text="Close", command=self.load_window.destroy,style="Custom.TButton")
         close_button.grid(row=3, columnspan=2)
-        if import_options != []:
-            Load_option_menu.grid(row=1, columnspan=2)
-            Load_button.grid(row=2, column=1, sticky="w")
+        if import_options != [""]:
+            load_optionmenu_border.grid(row=1, columnspan=2)
+            load_button.grid(row=2, column=1, sticky="w")
             delete_button.grid(row=2, column=0, sticky="e")
         else:
-            Load_empty_list_fault.grid(row=0, columnspan=2)
-        self.update_name_option()
+            load_empty_list_fault.grid(row=0, columnspan=2)
+        
     def load_action_set(self):
         self.selected_name = self.import_name_var.get()
         self.imported_data = self.data.get(self.selected_name, [])
@@ -460,20 +482,19 @@ class Hotkey_Manager:
             self.display_message(f"Deleted action set '{self.selected_name}'")
             # Clear the name selection
             self.import_name_var.set("")
-            # Close and reopen the window
-            self.load_window.destroy()
+            # Reload Data
             self.load()
             # Give Feedback
             Data_deleted = ttk.Label(self.load_window, text=f"{self.selected_name} deleted")
             Data_deleted.grid(row=0, columnspan=2)
         else:
             self.display_message(f"No action set found for name: {self.selected_name}")
-    # Functions for saving current Data
+    # Methods for saving current Data
     def save(self):
         # Clear Space to prevent stacking
         self.save_window.destroy()
         # Reload data
-        self.data.update(self.Load_exported_data())
+        self.data.update(self.load_exported_data())
         # Create a new window for exporting data
         self.save_window = tk.Frame(self.manager_frame)
         self.save_window.grid(row=5, padx=10, pady=10)
@@ -488,7 +509,6 @@ class Hotkey_Manager:
         enter_button = ttk.Button(self.save_window, text="Enter", command=self.save_action_set,style="Custom.TButton")
         enter_button.grid()
     def save_action_set(self):
-        self.data.update(self.Load_exported_data())
         self.current_actions_nested_list = []
         for each in range(len(self.action_type_comboboxes)):
             action_type = self.action_type_comboboxes[each].get()
@@ -500,9 +520,7 @@ class Hotkey_Manager:
                 self.data[name] = self.current_actions_nested_list
                 self.display_message(f"{name}={self.current_actions_nested_list}")
                 self.save_exported_data()
-                self.save_window.destroy()
-            else:
-                self.save_window.destroy()
+            self.save_window.destroy()
         else:
                 self.display_message("Please enter a name.")
     '''
@@ -514,7 +532,7 @@ class Hotkey_Manager:
 
 
     '''
-    # Function to verify the value inputs
+    # Method to verify the value inputs
     def check_data_for_export(self):
         fault_list = []
         common_keys = [
@@ -611,31 +629,31 @@ class Hotkey_Manager:
         else:
             self.display_message(f"{len(fault_list)} errors have been found" if len(fault_list)>1 else "1 error has been found")
             return False
-    # Function to save exported data to a JSON file
+    # Method to save exported data to a JSON file
     def save_exported_data(self):
-        exported_data = self.data 
         with open("exported_data.json", "w") as json_file:
-            json.dump(exported_data, json_file)
-        self.update_name_option()
-    # Function to load exported data from a JSON file
-    def Load_exported_data(self):
+            json.dump(self.data, json_file)
+        self.execution_option_reload()
+    # Method to load exported data from a JSON file
+    def load_exported_data(self):
         try:
             with open("exported_data.json", "r") as json_file:
+                print(json_file)
                 return json.load(json_file)
-        except FileNotFoundError:
+        except FileNotFoundError: # Also create a file ?
             return {}
 
 
-app = Hotkey_Manager(root)
+if __name__ == "__main__":
+    Hotkey_main_instance = Hotkey_Loop()
+    app = Hotkey_Manager()
+    app.build()
+    app.run()
+
+    # Ensure smooth exit
+    atexit.register(Hotkey_main_instance.at_exit)
 
 
-
-# Ensure smooth exit
-atexit.register(Hotkey_main_instance.at_exit)
-# Load exported data
-exported_data.update(app.Load_exported_data())
-
-root.mainloop()
 
 
 
