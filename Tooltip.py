@@ -25,7 +25,7 @@ class Tooltip:
         if self.tooltip:
             self.tooltip.destroy()
             self.tooltip = None
-
+'''
 root = tk.Tk()
 root.title("OptionMenu with Dynamic Tooltip")
 
@@ -40,5 +40,5 @@ def get_tooltip_text():
     return options_tips.get(option_var.get(), "")
 
 tooltip = Tooltip(option_menu, get_tooltip_text)
-
 root.mainloop()
+'''

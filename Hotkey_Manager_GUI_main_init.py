@@ -9,7 +9,7 @@ import keyboard
 import mouse
 import time
 import re
-
+import textwrap
 '''
 
 
@@ -42,13 +42,13 @@ class Hotkey_Loop:
     # Get the selected name (key) from the OptionMenu
     def get_data(self):
         self.selected_name = app.execute_name.get()
-        if not self.selected_name:
-            app.display_message("Please select a name from the list.")
-            return
+        if self.selected_name ==" ":
+            app.display_message("Please select a name from the menu.")
+            return False
         self.selected_data = app.data.get(self.selected_name, [])
         if self.selected_data == []:
             app.display_message(f"No data found for name: {self.selected_name}")
-            return
+            return False
     # Sequence of Checks to perform actions based on data
     def loop_thread(self):
         self.get_data()
@@ -61,25 +61,20 @@ class Hotkey_Loop:
         app.display_message(f"Press {hotkey} to start/stop the loop.")
         while self.programm_running:
             if self.loop_running:
-                print("loop")
                 for key, value in self.selected_data:
                     if not self.loop_running:
                         break
                     elif key == "Sleep":
-                        try:
-                            value = float(value)
-                            time.sleep(value)
-                        except Exception as e:
-                            print(f"{e} Fault at key {key} with value: {value}")
-                            continue
+                        value = float(value)
+                        time.sleep(value)
                     elif key == "Mouse Click":
-                        mouse.click(value)  # 'value' should be 'left', 'right', or 'middle'
+                        mouse.click(value)
                     elif key == "Mouse Double Click":
-                        mouse.double_click(value)  # 'value' should be 'left', 'right', or 'middle'
+                        mouse.double_click(value)
                     elif key == "Mouse Press":
-                        mouse.press(value)  # 'value' should be 'left', 'right', or 'middle'
+                        mouse.press(value) 
                     elif key == "Mouse Release":
-                        mouse.release(value)  # 'value' should be 'left', 'right', or 'middle'
+                        mouse.release(value) 
                     elif key == "Mouse Move":
                         x, y = map(int, value.split(','))
                         mouse.move(x, y,False)
@@ -123,7 +118,8 @@ class Hotkey_Loop:
         if self.loop_thread_instance and self.loop_thread_instance.is_alive():
             # loop thread is already running
             return
-        self.get_data()
+        if self.get_data() == False:
+            return
         # Start Programm
         app.display_message(f"{self.selected_name} loaded and ready")
         self.programm_running = True
@@ -152,7 +148,41 @@ class Hotkey_Loop:
     def at_exit(self):
         self.programm_running = False
         self.loop_running = False
+'''
 
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Tooltip GUI Class:
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+'''
+class Tooltip:
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.get_tooltip_text = text
+        self.tooltip = None
+        self.widget.bind("<Enter>", self.show_tooltip)
+        self.widget.bind("<Leave>", self.hide_tooltip)
+
+    def show_tooltip(self, event=None):
+        x, y, _, _ = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx()
+        y += self.widget.winfo_rooty() + self.widget.winfo_height()
+
+        self.tooltip = tk.Toplevel(self.widget,bg="light grey")
+        self.tooltip.wm_overrideredirect(True)
+        self.tooltip.wm_geometry(f"+{x}+{y}")
+
+        label = tk.Label(self.tooltip,bg="light grey")
+        wrapped_text = textwrap.fill(text=self.get_tooltip_text(), width=25)
+        label.config(text=wrapped_text)
+        label.grid(padx=5,pady=5)
+
+    def hide_tooltip(self, event=None):
+        if self.tooltip:
+            self.tooltip.destroy()
+            self.tooltip = None
 '''
 
 
@@ -185,7 +215,7 @@ class Hotkey_Manager:
         self.imported_data = []
         # Load data
         self.data = dict()
-        self.data.update(self.load_exported_data())
+        self.data = self.load_exported_data()
         # Define GUI variables
         self.manager_frame = None
         self.control_frame = None
@@ -203,6 +233,35 @@ class Hotkey_Manager:
         self.execute_name = None
         self.selected_name = None
         self.name_entry = None
+        self.common_keys = [
+                    "enter","space","esc","backspace","delete","insert","tab","capslock",
+                    "numlock","pause","print","home","end","pageup","pagedown",
+                    "up","down","left","right","ctrl","alt","shift",
+                    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+                    "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+                    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
+                    "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "+",
+                    "-", "=", "[", "]", "{", "}", ";", ":", "'", "\"", ",", ".", "<", ">", "/", 
+                    "?","`","´","°","~",
+                    "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12",
+                    ]
+                    #"num1", "num2", "num3", "num4", "num5", "num6", "num7", "num8", "num9", "num0",
+                    #"num*", "num-", "num+", "num.", "num/","scrolllock"
+        self.action_types = {
+                    "Hotkey":"Must be a key found on keyboard - examples:  f1, enter, u - numblock not supported",
+                    "Sleep":"Must be any float number - Unit: seconds",                
+                    "Mouse Click":"Must be: left, right or middle",
+                    "Mouse Double Click":"Must be: left, right or middle",   
+                    "Mouse Press":"Must be: left, right or middle",
+                    "Mouse Release":"Must be: left, right or middle",       
+                    "Absolute Mouse Move":"Must get 2 coordinates separated by comma - example: -246,619", 
+                    "Mouse Move":"Must get 2 coordinates separated by comma - example: -246,619",           
+                    "Mouse Wheel":"Must get any number, postitive is upwards, negative is downwards",
+                    "Keyboard Send":"Must be a key found on keyboard - examples:  f1, enter, u - numblock not supported",
+                    "Keyboard Press":"Must be a key found on keyboard - examples:  f1, enter, u - numblock not supported",       
+                    "Keyboard Release":"Must be a key found on keyboard - examples:  f1, enter, u - numblock not supported",        
+                    "Keyboard Write":"Anything goes",
+                    }
     def build(self):
         # Main Window
         self.root = tk.Tk()
@@ -291,11 +350,10 @@ class Hotkey_Manager:
         except:
             execution_optionmenu_border = tk.Frame(self.execution_frame, borderwidth=1,relief="groove")
             execution_optionmenu_border.grid(row=1, column=0, pady=10)
-        execution_options = list(self.data.keys()) if self.data else [""]
-        execution_optionmenu = ttk.OptionMenu(execution_optionmenu_border, self.execute_name, *execution_options)
+        execution_options = list(self.data.keys()) if self.data else [" "]
+        execution_optionmenu = ttk.OptionMenu(execution_optionmenu_border, self.execute_name," ", *execution_options)
         execution_optionmenu.grid()
         execution_optionmenu.config(width=25)
-        self.execute_name.set(" ") # Default Selection
     # Method to display a message in the terminal
     def display_message(self,message):
         if self.display_message_run_times > 999:
@@ -327,13 +385,11 @@ class Hotkey_Manager:
         self.action_canvas.coords(self.action_frame_place, x_position, 0)
         # Calculate the total height required for all child widgets in the action_frame
         total_child_height = sum(child.winfo_reqheight() for child in self.action_frame.winfo_children())
-        # Configure the action_canvas scroll region to fit all widgets
-        self.action_canvas.configure(scrollregion=(0,0,0,total_child_height))
         # Set a maximum canvas height to avoid excessive scrolling
         self.action_canvas.config(height=min(150, total_child_height))
         # Show the scrollbar and adjust the canvas scroll region
         self.scrollbar.grid(row=2, column=1, sticky="ns",padx=(10,0))
-        self.action_canvas.config(scrollregion=(0,0,0,total_child_height))
+        self.action_canvas.config(scrollregion=self.action_canvas.bbox("all"))
         '''
         # Check if the action_frame height exceeds the canvas height
         if self.action_frame.winfo_reqheight() > self.action_canvas.winfo_height():
@@ -371,16 +427,14 @@ class Hotkey_Manager:
         if action_type == "Hotkey":
             new_action_type_option_menu = ttk.OptionMenu(action_type_optionmenu_border, new_action_type_combobox, "Hotkey")
         else:
-            new_action_type_option_menu = ttk.OptionMenu(action_type_optionmenu_border, new_action_type_combobox,
-                                                        "Sleep",                "Mouse Click",
-                                                        "Mouse Double Click",   "Mouse Press",
-                                                        "Mouse Release",        "Absolute Mouse Move", 
-                                                        "Mouse Move",           "Mouse Wheel",
-                                                        "Keyboard Send",        "Keyboard Write",
-                                                        "Keyboard Press",       "Keyboard Release")
+            new_action_type_option_menu = ttk.OptionMenu(action_type_optionmenu_border, new_action_type_combobox,action_type,*list(self.action_types.keys()))
         new_action_type_option_menu.config(width=20)
         new_action_type_option_menu.grid(row=0, column=0)
-        new_action_type_combobox.set(action_type)  # Default Selection
+        
+        def get_tooltip_text():
+            return self.action_types.get(new_action_type_combobox.get(), "")
+
+        Tooltip(new_action_type_option_menu, get_tooltip_text)
 
         new_action_value_entry = ttk.Entry(new_action_frame, width=25,takefocus=False)
         new_action_value_entry.grid(row=0, column=2, pady=(1,3))
@@ -433,10 +487,9 @@ class Hotkey_Manager:
         self.load_window.grid(row=1, padx=10, pady=(0, 10))
         import_options = list(self.data.keys()) if self.data else [""]
         load_optionmenu_border = tk.Frame(self.load_window, borderwidth=1,relief="groove")
-        load_option_menu = ttk.OptionMenu(load_optionmenu_border, self.import_name_var, *import_options)
+        load_option_menu = ttk.OptionMenu(load_optionmenu_border, self.import_name_var,"", *import_options)
         load_option_menu.grid()
         load_option_menu.config(width=25)
-        self.import_name_var.set("") # Default selection
         # Add a "Load" button
         load_button = ttk.Button(self.load_window, text="Load", command=self.load_action_set,style="Custom.TButton")
         # Add a "Delete" button
@@ -535,20 +588,7 @@ class Hotkey_Manager:
     # Method to verify the value inputs
     def check_data_for_export(self):
         fault_list = []
-        common_keys = [
-                    "enter","space","esc","backspace","delete","insert","tab","capslock",
-                    "numlock","pause","print","home","end","pageup","pagedown",
-                    "up","down","left","right","ctrl","alt","shift",
-                    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-                    "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-                    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
-                    "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "+",
-                    "-", "=", "[", "]", "{", "}", ";", ":", "'", "\"", ",", ".", "<", ">", "/", 
-                    "?","`","´","°","~",
-                    "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12",
-                    "num1", "num2", "num3", "num4", "num5", "num6", "num7", "num8", "num9", "num0",
-                    "num*", "num-", "num+", "num.", "num/","scrolllock"
-                    ]
+        
         for key, value in self.current_actions_nested_list:
             if key == "Sleep": 
                 if re.match(r'^\s*-?\d+(\.\d+)?\s*$',value):
@@ -599,25 +639,25 @@ class Hotkey_Manager:
                     self.display_message(f"Fault at key: {key} - with value: {value} - should be type: int number")
                     fault_list.append(key)
             elif key == "Keyboard Send":
-                if value in common_keys:
+                if value in self.common_keys:
                     continue
                 else:
                     self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
                     fault_list.append(key)
             elif key == "Keyboard Press":
-                if value in common_keys:
+                if value in self.common_keys:
                     continue
                 else:
                     self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
                     fault_list.append(key)
             elif key == "Keyboard Release":
-                if value in common_keys:
+                if value in self.common_keys:
                     continue
                 else:
                     self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
                     fault_list.append(key)
             elif key == "Hotkey":
-                if value in common_keys:
+                if value in self.common_keys:
                     continue
                 else:
                     self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
@@ -638,9 +678,14 @@ class Hotkey_Manager:
     def load_exported_data(self):
         try:
             with open("exported_data.json", "r") as json_file:
-                print(json_file)
-                return json.load(json_file)
-        except FileNotFoundError: # Also create a file ?
+                data = json.load(json_file)
+                print("Loaded data:", data)  # Print the loaded data for debugging
+                return data
+        except FileNotFoundError:
+            print("File 'exported_data.json' not found.")  # Print an error message for debugging
+            return {}
+        except json.JSONDecodeError as e:
+            print("Error decoding JSON:", e)  # Print JSON decoding error for debugging
             return {}
 
 
