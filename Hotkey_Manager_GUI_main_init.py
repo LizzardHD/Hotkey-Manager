@@ -2,14 +2,15 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import scrolledtext
+from tkinter import font as tkfont
 import json
 import threading
-import atexit
 import keyboard
 import mouse
 import time
 import re
 import textwrap
+
 '''
 
 
@@ -144,10 +145,6 @@ class Hotkey_Loop:
         app.start_button.grid(row=0, column=0, padx=5)
         app.stop_button.grid_forget()
         app.terminal_frame.update_idletasks
-    # Stop on closure
-    def at_exit(self):
-        self.programm_running = False
-        self.loop_running = False
 '''
 
 
@@ -312,7 +309,7 @@ class Hotkey_Manager:
         terminal_label = ttk.Label(self.terminal_frame,text="Terminal:")
         terminal_label.grid(row=1, column=0, sticky="w")
         self.terminal = scrolledtext.ScrolledText(self.terminal_frame, wrap=tk.WORD, state=tk.DISABLED, width=75, height=10)
-        self.terminal.configure(font=("Helvetica", 9))
+        self.terminal.configure(font=("Arial", 9))#Helvetica
         self.terminal.grid(row=2, column=0, sticky="n")
         # Buttons for hotkey functionality in upper Half of right frame
         self.start_button = ttk.Button(self.execution_frame, text="Start",command=Hotkey_main_instance.start_programm,style="Custom.TButton")
@@ -322,6 +319,9 @@ class Hotkey_Manager:
         self.import_name_var = tk.StringVar()
         # Add the name/key of Execution Optionmenu
         self.execute_name = tk.StringVar()
+        self.execution_optionmenu_border = tk.Frame(self.execution_frame, borderwidth=1,relief="groove")
+        self.execution_optionmenu_border.grid(row=1, column=0, pady=10)
+        self.execution_optionmenu = ttk.OptionMenu(self.execution_optionmenu_border, self.execute_name," ")
         self.execution_option_reload()
         # Create a Sytle
         self.style = ttk.Style()
@@ -337,7 +337,7 @@ class Hotkey_Manager:
     ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     Support GUI Methods:
     ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+    
 
     '''
     # Methods for the Execution Optionmenu in reference to hotkey class
@@ -345,27 +345,34 @@ class Hotkey_Manager:
         # Reload Data
         self.data.update(self.load_exported_data())
         # Reload Menu
-        try:
-            execution_optionmenu.destroy()
-        except:
-            execution_optionmenu_border = tk.Frame(self.execution_frame, borderwidth=1,relief="groove")
-            execution_optionmenu_border.grid(row=1, column=0, pady=10)
+        self.execution_optionmenu.destroy()
         execution_options = list(self.data.keys()) if self.data else [" "]
-        execution_optionmenu = ttk.OptionMenu(execution_optionmenu_border, self.execute_name," ", *execution_options)
-        execution_optionmenu.grid()
-        execution_optionmenu.config(width=25)
+        self.execution_optionmenu = ttk.OptionMenu(self.execution_optionmenu_border, self.execute_name," ", *execution_options)
+        self.execution_optionmenu.grid()
+        self.execution_optionmenu.config(width=25)
     # Method to display a message in the terminal
     def display_message(self,message):
-        if self.display_message_run_times > 999:
-            self.display_message_run_times = 0
+        def inner_separator(widget,separator_object,middle_object):
+            # Get the font size used in the text widget
+            font_size_pixel = tkfont.Font(font=widget.cget("font")).measure(separator_object)
+            middle_object_pixel = tkfont.Font(font=widget.cget("font")).measure(middle_object)
+            line_length_pixel = widget.winfo_width() - middle_object_pixel
+            max_separator_length_objects = int(line_length_pixel / font_size_pixel) -1
+            # Calculate the length of the separator line before and after the middle object
+            separator_length_before = max_separator_length_objects // 2
+            separator_length_after = max_separator_length_objects - separator_length_before
+            # Create the separator line
+            separator = separator_object * separator_length_before + str(middle_object) + separator_object * separator_length_after
+            return separator
+
         self.terminal.config(state=tk.NORMAL)  # Set the state to normal to allow editing
-        self.terminal.insert(tk.END, f"---------------------------------------------------------------{self.display_message_run_times:03}---------------------------------------------------------------")
+        self.terminal.insert(tk.END, inner_separator(self.terminal,"-",self.display_message_run_times))
         self.terminal.insert(tk.END, "\n")
         self.terminal.insert(tk.END, message)  # Insert the message
         self.terminal.insert(tk.END, "\n")
         self.terminal.config(state=tk.DISABLED)  # Set the state back to disabled
         self.terminal.see(tk.END)
-        self.display_message_run_times += 1
+        self.display_message_run_times += 20
     '''
 
 
@@ -695,8 +702,6 @@ if __name__ == "__main__":
     app.build()
     app.run()
 
-    # Ensure smooth exit
-    atexit.register(Hotkey_main_instance.at_exit)
 
 
 
