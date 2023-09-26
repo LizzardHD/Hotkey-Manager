@@ -1,13 +1,97 @@
-        self.action_canvas.update_idletasks()
-        on top of canvas change method
+self.action_canvas.update_idletasks()
+on top of canvas change method
 
-        self.common_keys = [
-                    "enter","space","esc","backspace","delete","insert","tab","capslock",
-                    "numlock","pause","print","home","end","pageup","pagedown",
-                    "up","down","left","right","ctrl","alt","shift",
-                    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-                    "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-                    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
-                    "#", "^", "*", "+", "-", "/", ",", ".", "<", "´",
-                    "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12",
-                    ]
+self.common_keys = [
+            "enter","space","esc","backspace","delete","insert","tab","capslock",
+            "numlock","pause","print","home","end","pageup","pagedown",
+            "up","down","left","right","ctrl","alt","shift",
+            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+            "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
+            "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
+            "#", "^", "*", "+", "-", "/", ",", ".", "<", "´",
+            "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12",
+            ]
+def check_data_for_export(self):
+        fault_list = []
+        i = 0
+        for key, value in self.current_actions_nested_list:
+            i += 1
+            if key == "Sleep": 
+                if re.match(r'^\s*-?\d+(\.\d+)?\s*$',value):
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: number - unit: seconds")
+                    fault_list.append(key)
+            elif key == "Mouse Click":
+                if value in ["right","left","middle"]:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be either: right, left, middle")
+                    fault_list.append(key)
+            elif key == "Mouse Double Click":
+                if value in ["right","left","middle"]:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be either: right, left, middle")
+                    fault_list.append(key)
+            elif key == "Mouse Press":
+                if value in ["right","left","middle"]:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be either: right, left, middle")
+                    fault_list.append(key)
+            elif key == "Mouse Release":
+                if value in ["right","left","middle"]:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be either: right, left, middle")
+                    fault_list.append(key)
+            elif key == "Mouse Move":
+                if re.match(r'^\s*-?\d+,-?\d+\s*$', value):
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: int number - form: number_1, number_2")
+                    fault_list.append(key)
+            elif key == "Absolute Mouse Move":
+                if re.match(r'^\s*-?\d+,-?\d+\s*$', value):
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: int number - form: number_1, number_2")
+                    fault_list.append(key)
+            elif key == "Mouse Wheel":
+                if re.match(r'^\s*-?\d+\s*$',value):
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: int number")
+                    fault_list.append(key)
+            elif key == "Keyboard Send":
+                if value in self.common_keys:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: common key")
+                    fault_list.append(key)
+            elif key == "Keyboard Press":
+                if value in self.common_keys:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: common key")
+                    fault_list.append(key)
+            elif key == "Keyboard Release":
+                if value in self.common_keys:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: common key")
+                    fault_list.append(key)
+            elif key == "Hotkey":
+                if value in self.common_keys:
+                    continue
+                else:
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: common key")
+                    fault_list.append(key)        
+            # Skipping check for Keyboard Write since any string is ok
+        # Evaluation to request saving if no fault
+        if fault_list == []:
+            return True
+        else:
+            self.display_message(f"{len(fault_list)} errors have been found" if len(fault_list)>1 else "1 error has been found")
+            return False
