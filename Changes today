@@ -1,0 +1,2 @@
+        self.action_canvas.update_idletasks()
+        on top of canvas change method
