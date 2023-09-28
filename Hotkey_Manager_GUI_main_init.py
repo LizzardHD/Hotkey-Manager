@@ -2,14 +2,15 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import scrolledtext
+from tkinter import font as tkfont
 import json
 import threading
-import atexit
 import keyboard
 import mouse
 import time
 import re
 import textwrap
+
 '''
 
 
@@ -144,10 +145,6 @@ class Hotkey_Loop:
         app.start_button.grid(row=0, column=0, padx=5)
         app.stop_button.grid_forget()
         app.terminal_frame.update_idletasks
-    # Stop on closure
-    def at_exit(self):
-        self.programm_running = False
-        self.loop_running = False
 '''
 
 
@@ -240,13 +237,9 @@ class Hotkey_Manager:
                     "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
                     "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
                     "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
-                    "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "+",
-                    "-", "=", "[", "]", "{", "}", ";", ":", "'", "\"", ",", ".", "<", ">", "/", 
-                    "?","`","´","°","~",
+                    "#", "^", "*", "+", "-", "/", ",", ".", "<", "´",
                     "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "f10", "f11", "f12",
                     ]
-                    #"num1", "num2", "num3", "num4", "num5", "num6", "num7", "num8", "num9", "num0",
-                    #"num*", "num-", "num+", "num.", "num/","scrolllock"
         self.action_types = {
                     "Hotkey":"Must be a key found on keyboard - examples:  f1, enter, u - numblock not supported",
                     "Sleep":"Must be any float number - Unit: seconds",                
@@ -312,7 +305,7 @@ class Hotkey_Manager:
         terminal_label = ttk.Label(self.terminal_frame,text="Terminal:")
         terminal_label.grid(row=1, column=0, sticky="w")
         self.terminal = scrolledtext.ScrolledText(self.terminal_frame, wrap=tk.WORD, state=tk.DISABLED, width=75, height=10)
-        self.terminal.configure(font=("Helvetica", 9))
+        self.terminal.configure(font=("Arial", 9))#Helvetica
         self.terminal.grid(row=2, column=0, sticky="n")
         # Buttons for hotkey functionality in upper Half of right frame
         self.start_button = ttk.Button(self.execution_frame, text="Start",command=Hotkey_main_instance.start_programm,style="Custom.TButton")
@@ -322,6 +315,9 @@ class Hotkey_Manager:
         self.import_name_var = tk.StringVar()
         # Add the name/key of Execution Optionmenu
         self.execute_name = tk.StringVar()
+        self.execution_optionmenu_border = tk.Frame(self.execution_frame, borderwidth=1,relief="groove")
+        self.execution_optionmenu_border.grid(row=1, column=0, pady=10)
+        self.execution_optionmenu = ttk.OptionMenu(self.execution_optionmenu_border, self.execute_name," ")
         self.execution_option_reload()
         # Create a Sytle
         self.style = ttk.Style()
@@ -337,7 +333,7 @@ class Hotkey_Manager:
     ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     Support GUI Methods:
     ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+    
 
     '''
     # Methods for the Execution Optionmenu in reference to hotkey class
@@ -345,21 +341,27 @@ class Hotkey_Manager:
         # Reload Data
         self.data.update(self.load_exported_data())
         # Reload Menu
-        try:
-            execution_optionmenu.destroy()
-        except:
-            execution_optionmenu_border = tk.Frame(self.execution_frame, borderwidth=1,relief="groove")
-            execution_optionmenu_border.grid(row=1, column=0, pady=10)
+        self.execution_optionmenu.destroy()
         execution_options = list(self.data.keys()) if self.data else [" "]
-        execution_optionmenu = ttk.OptionMenu(execution_optionmenu_border, self.execute_name," ", *execution_options)
-        execution_optionmenu.grid()
-        execution_optionmenu.config(width=25)
+        self.execution_optionmenu = ttk.OptionMenu(self.execution_optionmenu_border, self.execute_name," ", *execution_options)
+        self.execution_optionmenu.grid()
+        self.execution_optionmenu.config(width=25)
     # Method to display a message in the terminal
     def display_message(self,message):
-        if self.display_message_run_times > 999:
-            self.display_message_run_times = 0
+        def inner_separator(widget,separator_object,middle_object):
+            # Get the font size used in the text widget
+            font_size_pixel = tkfont.Font(font=widget.cget("font")).measure(separator_object)
+            middle_object_pixel = tkfont.Font(font=widget.cget("font")).measure(middle_object)
+            line_length_pixel = widget.winfo_width()-2
+            # Calculate the length of the separator line before and after the middle object
+            separator_length_after = line_length_pixel//font_size_pixel//2
+            separator_length_before = (line_length_pixel - middle_object_pixel*2)//font_size_pixel//2
+            # Create the separator line
+            separator = separator_object * separator_length_before + str(middle_object) + separator_object * separator_length_after
+            return separator
+
         self.terminal.config(state=tk.NORMAL)  # Set the state to normal to allow editing
-        self.terminal.insert(tk.END, f"---------------------------------------------------------------{self.display_message_run_times:03}---------------------------------------------------------------")
+        self.terminal.insert(tk.END, inner_separator(self.terminal,"-",self.display_message_run_times))
         self.terminal.insert(tk.END, "\n")
         self.terminal.insert(tk.END, message)  # Insert the message
         self.terminal.insert(tk.END, "\n")
@@ -377,6 +379,8 @@ class Hotkey_Manager:
     '''
     # Method to update the canvas and action frame position
     def canvas_change(self,event=None):
+        # Reload Widgets within Canvas
+        self.action_canvas.update_idletasks()
         # Define the width of the canvas
         self.action_canvas.config(width=self.action_frame.winfo_reqwidth())
         # Calculate the x-position to center the action_frame
@@ -390,18 +394,6 @@ class Hotkey_Manager:
         # Show the scrollbar and adjust the canvas scroll region
         self.scrollbar.grid(row=2, column=1, sticky="ns",padx=(10,0))
         self.action_canvas.config(scrollregion=self.action_canvas.bbox("all"))
-        '''
-        # Check if the action_frame height exceeds the canvas height
-        if self.action_frame.winfo_reqheight() > self.action_canvas.winfo_height():
-        else:
-            # Hide the scrollbar and adjust the canvas scroll region
-            self.scrollbar.grid_remove()
-            self.action_canvas.config(scrollregion=(0,0,0,total_child_height))
-        '''
-        print(self.action_add_run_times," - runtime")
-        print(self.action_canvas.winfo_height()," - canvas")
-        print(self.action_frame.winfo_reqheight()," - frame")
-        print(total_child_height," - childs")
     # Method to add an action
     def add_action(self,action_type="Sleep", action_value=""):
         self.action_canvas.event_generate("<Configure>")
@@ -417,7 +409,6 @@ class Hotkey_Manager:
         new_action_frame = tk.Frame(self.action_frame)
         new_action_frame.grid(row=len(self.action_type_comboboxes) + 1, column=0,padx=10)
         self.action_new_frame_list.append(new_action_frame)
-        
         new_action_label = ttk.Label(new_action_frame, text=f"{self.action_add_run_times:03}",padding=(1,2))
         new_action_label.grid(row=0, column=0)
 
@@ -588,79 +579,92 @@ class Hotkey_Manager:
     # Method to verify the value inputs
     def check_data_for_export(self):
         fault_list = []
-        
+        i = 0
         for key, value in self.current_actions_nested_list:
+            i += 1
             if key == "Sleep": 
                 if re.match(r'^\s*-?\d+(\.\d+)?\s*$',value):
                     continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: number - unit: seconds")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: number - unit: seconds")
                     fault_list.append(key)
             elif key == "Mouse Click":
                 if value in ["right","left","middle"]:
                     continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be either: right, left, middle")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be either: right, left, middle")
                     fault_list.append(key)
             elif key == "Mouse Double Click":
                 if value in ["right","left","middle"]:
                     continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be either: right, left, middle")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be either: right, left, middle")
                     fault_list.append(key)
             elif key == "Mouse Press":
                 if value in ["right","left","middle"]:
                     continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be either: right, left, middle")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be either: right, left, middle")
                     fault_list.append(key)
             elif key == "Mouse Release":
                 if value in ["right","left","middle"]:
                     continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be either: right, left, middle")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be either: right, left, middle")
                     fault_list.append(key)
             elif key == "Mouse Move":
                 if re.match(r'^\s*-?\d+,-?\d+\s*$', value):
                     continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: int number - form: number_1, number_2")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: int number - form: number_1, number_2")
                     fault_list.append(key)
             elif key == "Absolute Mouse Move":
                 if re.match(r'^\s*-?\d+,-?\d+\s*$', value):
                     continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: int number - form: number_1, number_2")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: int number - form: number_1, number_2")
                     fault_list.append(key)
             elif key == "Mouse Wheel":
                 if re.match(r'^\s*-?\d+\s*$',value):
                     continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: int number")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: int number")
                     fault_list.append(key)
             elif key == "Keyboard Send":
                 if value in self.common_keys:
                     continue
+                elif "+" in value:
+                    for each in value.split("+"):
+                        if each in self.common_keys:
+                            continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: common key alone or combined with +")
                     fault_list.append(key)
             elif key == "Keyboard Press":
                 if value in self.common_keys:
                     continue
+                elif "+" in value:
+                    for each in value.split("+"):
+                        if each in self.common_keys:
+                            continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: common key alone or combined with +")
                     fault_list.append(key)
             elif key == "Keyboard Release":
                 if value in self.common_keys:
                     continue
+                elif "+" in value:
+                    for each in value.split("+"):
+                        if each in self.common_keys:
+                            continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: common key alone or combined with +")
                     fault_list.append(key)
             elif key == "Hotkey":
                 if value in self.common_keys:
                     continue
                 else:
-                    self.display_message(f"Fault at key: {key} - with value: {value} - should be type: common key")
+                    self.display_message(f"Fault at key: {i:03} - {key} - with value: {value} - should be type: common key")
                     fault_list.append(key)        
             # Skipping check for Keyboard Write since any string is ok
         # Evaluation to request saving if no fault
@@ -669,6 +673,7 @@ class Hotkey_Manager:
         else:
             self.display_message(f"{len(fault_list)} errors have been found" if len(fault_list)>1 else "1 error has been found")
             return False
+
     # Method to save exported data to a JSON file
     def save_exported_data(self):
         with open("exported_data.json", "w") as json_file:
@@ -695,8 +700,6 @@ if __name__ == "__main__":
     app.build()
     app.run()
 
-    # Ensure smooth exit
-    atexit.register(Hotkey_main_instance.at_exit)
 
 
 
