@@ -26,6 +26,9 @@ class Hotkey_Loop:
         self.programm_running = False
         self.loop_running = False
         self.falling_trigger = False
+        # Time Variables
+        self.start_time = False
+        self.stop_time = False
         # Create a global variable to store the reference to the loop thread
         self.loop_thread_instance = None
         # Values to act upon
@@ -93,6 +96,12 @@ class Hotkey_Loop:
                         keyboard.press(value)
                     elif key == "Keyboard Release":
                         keyboard.release(value)
+                    elif key == "End":
+                        app.display_message("End")
+                        self.stop_time = time.time()
+                        elapsed_time = self.stop_time - self.start_time
+                        app.display_message(f"{elapsed_time:.1f} seconds passed")
+                        self.loop_running = False
     '''
 
 
@@ -110,8 +119,12 @@ class Hotkey_Loop:
                 self.loop_running = not self.loop_running
                 if self.loop_running:
                     app.display_message("Run")
+                    self.start_time = time.time()
                 else:
                     app.display_message("Pause")
+                    self.stop_time = time.time()
+                    elapsed_time = self.stop_time - self.start_time
+                    app.display_message(f"{elapsed_time:.1f} seconds passed")
         elif e.event_type == keyboard.KEY_UP:
             self.falling_trigger = False
     # Start a looping daemon thread
@@ -124,6 +137,9 @@ class Hotkey_Loop:
         # Start Programm
         app.display_message(f"{self.selected_name} loaded and ready")
         self.programm_running = True
+        # Deactivate the execution options
+        app.execution_optionmenu.configure(state="disabled")
+        # Looping Thread Call
         self.loop_thread_instance = threading.Thread(target=self.loop_thread)
         self.loop_thread_instance.daemon = True  # Set as daemon thread
         self.loop_thread_instance.start()
@@ -140,7 +156,10 @@ class Hotkey_Loop:
         # Stop Programm
         app.display_message(f"{self.selected_name} quitting")
         self.programm_running = False
-        self.loop_running = False  # Stop the loop thread gracefully
+        # Stop the loop thread gracefully
+        self.loop_running = False  
+        # Reactivate the execution options
+        app.execution_optionmenu.configure(state="normal")
         # Update GUI
         app.start_button.grid(row=0, column=0, padx=5)
         app.stop_button.grid_forget()
@@ -254,6 +273,7 @@ class Hotkey_Manager:
                     "Keyboard Press":"Must be a key found on keyboard - examples:  f1, enter, u - numblock not supported",       
                     "Keyboard Release":"Must be a key found on keyboard - examples:  f1, enter, u - numblock not supported",        
                     "Keyboard Write":"Anything goes",
+                    "End":"Stops the loop at this point"
                     }
     def build(self):
         # Main Window
@@ -418,7 +438,7 @@ class Hotkey_Manager:
         if action_type == "Hotkey":
             new_action_type_option_menu = ttk.OptionMenu(action_type_optionmenu_border, new_action_type_combobox, "Hotkey")
         else:
-            new_action_type_option_menu = ttk.OptionMenu(action_type_optionmenu_border, new_action_type_combobox,action_type,*list(self.action_types.keys()))
+            new_action_type_option_menu = ttk.OptionMenu(action_type_optionmenu_border, new_action_type_combobox,action_type,*list(item for item in self.action_types.keys() if item != "Hotkey"))
         new_action_type_option_menu.config(width=20)
         new_action_type_option_menu.grid(row=0, column=0)
         
@@ -430,6 +450,8 @@ class Hotkey_Manager:
         new_action_value_entry = ttk.Entry(new_action_frame, width=25,takefocus=False)
         new_action_value_entry.grid(row=0, column=2, pady=(1,3))
         new_action_value_entry.insert(0, action_value)  # Default Value
+        if action_type == "End":
+            new_action_value_entry.configure(state="readonly")
 
         new_delete_action_button = ttk.Button(self.manager_frame, text="X",style="Custom.TButton", command=self.delete_action)
         new_delete_action_button.grid(row=3, columnspan=3, column=0)
@@ -684,7 +706,6 @@ class Hotkey_Manager:
         try:
             with open("exported_data.json", "r") as json_file:
                 data = json.load(json_file)
-                print("Loaded data:", data)  # Print the loaded data for debugging
                 return data
         except FileNotFoundError:
             print("File 'exported_data.json' not found.")  # Print an error message for debugging

@@ -1,1 +1,1 @@
-{"1": [["Hotkey", "1"]]}
+{"1": [["Hotkey", "1"], ["Sleep", "2"], ["Absolute Mouse Move", "200,300"], ["Sleep", "6"], ["Absolute Mouse Move", "1000,800"], ["End", ""]], "ascent": [["Hotkey", "f1"], ["Sleep", "2"], ["Keyboard Send", "o"]], "tesrt": [["Hotkey", "1"], ["Hotkey", "2"]]}
