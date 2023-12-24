@@ -8,9 +8,9 @@ import threading
 import keyboard
 import mouse
 import time
+import datetime
 import re
 import textwrap
-
 '''
 
 
@@ -137,8 +137,8 @@ class Hotkey_Loop:
         # Start Programm
         app.display_message(f"{self.selected_name} loaded and ready")
         self.programm_running = True
-        # Deactivate the execution options
-        app.execution_optionmenu.configure(state="disabled")
+        # Deactivate the gui
+        app.stop_gui()
         # Looping Thread Call
         self.loop_thread_instance = threading.Thread(target=self.loop_thread)
         self.loop_thread_instance.daemon = True  # Set as daemon thread
@@ -158,12 +158,12 @@ class Hotkey_Loop:
         self.programm_running = False
         # Stop the loop thread gracefully
         self.loop_running = False  
-        # Reactivate the execution options
-        app.execution_optionmenu.configure(state="normal")
-        # Update GUI
+        # Reactivate the gui
+        app.start_gui()
         app.start_button.grid(row=0, column=0, padx=5)
         app.stop_button.grid_forget()
         app.terminal_frame.update_idletasks
+
 '''
 
 
@@ -229,6 +229,13 @@ class Hotkey_Manager:
         self.action_value_entries = []
         self.action_new_frame_list = []
         self.imported_data = []
+        self.recorded_data = []
+        self.recorder_last_action_time = 0
+        self.is_recording = False
+        self.recording_key_states = set()
+        self.recorder_mouse_move_flag = False
+        self.recorder_x = 0
+        self.recorder_y = 0
         # Load data
         self.data = dict()
         self.data = self.load_exported_data()
@@ -318,9 +325,13 @@ class Hotkey_Manager:
         add_action_button = ttk.Button(self.manager_frame, text="Add Action", command=self.add_action,style="Custom.TButton")
         add_action_button.grid(row=4, columnspan=3, column=0)
         save_button = ttk.Button(self.control_frame, text="Save Actions", command=self.save,style="Custom.TButton")
-        save_button.grid(row=0, column=1)
+        save_button.grid(row=1, column=1)
         load_button = ttk.Button(self.control_frame, text="Load Actions", command=self.load,style="Custom.TButton")
-        load_button.grid(row=0, column=0)
+        load_button.grid(row=1, column=0)
+        # Label information for mouse position
+        cursor_button = tk.Button(self.root,width=2,height=1, command=self.toggle_label_visibility,bd=1,compound="center")
+        cursor_button.grid(row=0,sticky="w")
+        self.cursor_label = tk.Label(self.root)
         # Terminal space to display feedback in lower half of right frame
         terminal_label = ttk.Label(self.terminal_frame,text="Terminal:")
         terminal_label.grid(row=1, column=0, sticky="w")
@@ -346,6 +357,7 @@ class Hotkey_Manager:
         # Initialize Hotkey
         self.add_action("Hotkey")
     def run(self):
+        self.root.after(40,self.update_mouse)
         self.root.mainloop()
     '''
 
@@ -356,6 +368,23 @@ class Hotkey_Manager:
     
 
     '''
+    # Methods to enable and disbale certain gui elements during runtime
+    def stop_gui(self):
+        self.execution_optionmenu.configure(state="disabled")
+        self.manager_frame.grid_remove()
+    def start_gui(self):
+        self.execution_optionmenu.configure(state="normal")
+        self.manager_frame.grid(row=2, column=0, sticky="n", pady=10, padx=(10, 0))
+    # Methods to see current cursor coordinates
+    def toggle_label_visibility(self):
+        if self.cursor_label.winfo_ismapped():
+            self.cursor_label.grid_remove()  # Hide the details label
+        else:
+            self.cursor_label.grid(row=0,column=0,padx=20,sticky="w")  # Show the details label
+    def update_mouse(self):
+        x, y = self.root.winfo_pointerxy()
+        self.cursor_label.config(text=f"Mouse Coordinates: ({x}, {y})")
+        self.root.after(40, self.update_mouse)
     # Methods for the Execution Optionmenu in reference to hotkey class
     def execution_option_reload(self):
         # Reload Data
@@ -512,6 +541,12 @@ class Hotkey_Manager:
         # Add a "Close" button
         close_button = ttk.Button(self.load_window, text="Close", command=self.load_window.destroy,style="Custom.TButton")
         close_button.grid(row=3, columnspan=2)
+        # Add "Recorder" button
+        self.recorder_canvas = tk.Canvas(self.load_window, width=30, height=30)
+        self.recorder_canvas.create_oval(5, 5, 25, 25)
+        self.recorder_canvas.grid(row=4, columnspan=2)
+        self.recorder_canvas.bind("<Button-1>", self.recording)
+        self.update_canvas()
         if import_options != [""]:
             load_optionmenu_border.grid(row=1, columnspan=2)
             load_button.grid(row=2, column=1, sticky="w")
@@ -589,6 +624,118 @@ class Hotkey_Manager:
             self.save_window.destroy()
         else:
                 self.display_message("Please enter a name.")
+    '''
+
+
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    Recording Methods:
+    ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+    '''
+    def simplify_actions(self, actions, time_threshold=0.5):
+        simplified_actions = []
+        i = 0
+        while i < len(actions):
+            action, value = actions[i]
+            try:
+                action_prefix = action.split()[0]
+                action_suffix = action.split()[1] if len(action.split()) > 1 else None
+            except:
+                pass
+            # Check for 'Press' to start check chain
+            if action_suffix == "Press":
+            # Check for the corresponding 'Release' action
+                if i+2<len(actions) and action_prefix == actions[i+2][0].split()[0] and value == actions[i+2][1]:
+            # Check time difference
+                    if float(actions[i + 1][1]) < time_threshold:
+            # Add 'Combined' if conditions passed
+                        if action_prefix == "Mouse":
+                            simplified_actions.append([f"Mouse Click", value])
+                        elif action_prefix == "Keyboard":
+                            simplified_actions.append([f"Keyboard Send", value])
+            # Add internal Sleep Time behind Merge
+                        simplified_actions.append([f"{actions[i+1][0]}",f"{actions[i+1][1]}"])
+                        i += 3
+                        continue   
+            # Add 'Press' if time too long
+                    else:
+                        simplified_actions.append([action, value])
+            # Add 'Press' if no corresponding 'Release' found
+                else:
+                    simplified_actions.append([action, value])
+            # Add 'Sleep' values together if multiple are consecutive
+            elif action == "Sleep":
+                if len(simplified_actions)>0 and simplified_actions[-1][0] == "Sleep":
+                    simplified_actions[-1][1] = str(round(float(simplified_actions[-1][1])+float(value),3))
+                else:
+                    simplified_actions.append([action, value])
+            
+            # Add 'Action' if no Check chain initiated
+            else:
+                simplified_actions.append([action, value])
+            i += 1
+                
+        return simplified_actions
+
+    def time_track_move(self):
+        current_time = time.time()
+        time_elapsed_since_action = round(current_time - self.recorder_last_action_time, 3)
+        self.recorded_data.append(["Sleep", f"{time_elapsed_since_action}"])
+        self.recorder_last_action_time = current_time
+        if self.recorder_mouse_move_flag:
+                self.recorded_data.append(["Mouse Move", f"{self.recorder_x},{self.recorder_y}"])
+                self.recorder_mouse_move_flag = False
+    def on_input_event(self, event):
+        if isinstance(event, mouse.MoveEvent):
+            self.recorder_x, self.recorder_y = event.x, event.y
+            self.recorder_mouse_move_flag = True
+        elif isinstance(event, mouse.ButtonEvent):
+            if self.is_recording:
+                action = "Mouse Press" if event.event_type == mouse.DOWN else "Mouse Release"
+                self.time_track_move()
+                self.recorded_data.append([action, str(event.button)])
+        elif isinstance(event, keyboard.KeyboardEvent):
+            if self.is_recording:
+                key = event.name
+                action = "Keyboard Press" if event.event_type == keyboard.KEY_DOWN else "Keyboard Release"
+                if action == "Keyboard Press" and key not in self.recording_key_states:
+                    self.recording_key_states.add(key)
+                    self.time_track_move()
+                    self.recorded_data.append([action, key])
+                elif action == "Keyboard Release" and key in self.recording_key_states:
+                    self.recording_key_states.remove(key)
+                    self.time_track_move()
+                    self.recorded_data.append([action, key])
+
+    def recording(self, event):
+        if not self.is_recording:  # start
+            self.recorded_data = []
+            self.recorder_last_action_time = time.time()
+            self.recording_key_states.clear()
+            keyboard.hook(self.on_input_event)
+            mouse.hook(self.on_input_event)
+        elif self.is_recording:  # stop
+            mouse.unhook_all()
+            keyboard.unhook_all()
+            self.save_recorded_set()
+        self.is_recording = not self.is_recording
+        self.update_canvas()
+
+    def update_canvas(self):
+        self.recorder_canvas.delete("all")  # Clear the canvas
+        color = "green" if self.is_recording else "red"
+        self.recorder_canvas.create_oval(5, 5, 25, 25, fill=color)
+    def save_recorded_set(self):
+        self.recorded_data = self.simplify_actions(self.recorded_data)
+        self.recorded_data.insert(0, ['Hotkey', 'space'])
+        name = f"recorded_set_{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        self.data[name] = self.recorded_data
+        self.display_message(f"{name}={self.recorded_data}")
+        self.save_exported_data()
+        self.load_exported_data()
+
+
     '''
 
 
